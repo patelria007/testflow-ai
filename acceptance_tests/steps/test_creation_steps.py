@@ -6,6 +6,8 @@ Each step interacts with the actual web UI (forms, buttons, page content).
 
 from behave import given, when, then
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 
 # --- Scenario 1: Login step ---
@@ -17,6 +19,10 @@ def step_logged_in(context):
     context.driver.find_element(By.ID, "email").send_keys("test@example.com")
     context.driver.find_element(By.ID, "password").send_keys("password123")
     context.driver.find_element(By.ID, "login-btn").click()
+    # Wait for login redirect to complete so the session cookie is set
+    WebDriverWait(context.driver, 5).until(
+        lambda d: "/login" not in d.current_url
+    )
 
 
 # --- Scenario 1: Navigation step ---
@@ -61,6 +67,10 @@ def step_set_expected_outcome(context, outcome):
 def step_save_test(context):
     """Click the Save Test button to submit the form."""
     context.driver.find_element(By.ID, "save-test-btn").click()
+    # Wait for redirect to /tests to complete
+    WebDriverWait(context.driver, 5).until(
+        lambda d: "/tests" in d.current_url
+    )
 
 
 # --- Scenario 1: Verification steps ---
@@ -68,9 +78,9 @@ def step_save_test(context):
 @then('I should see a confirmation message "{message}"')
 def step_see_confirmation(context, message):
     """Assert the flash confirmation message is visible on the page."""
-    page_source = context.driver.page_source
-    assert message in page_source, (
-        f"Expected confirmation '{message}' not found on page."
+    # Wait for the message to appear in the page
+    WebDriverWait(context.driver, 5).until(
+        lambda d: message in d.page_source
     )
 
 

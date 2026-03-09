@@ -1,31 +1,71 @@
-<!DOCTYPE html>
-<html>
-<head><title>Test List - TestFlow</title></head>
-<body>
-  <h1>Test List</h1>
-  <p><a href="/create-test">+ Create New Test</a></p>
-  {% with messages = get_flashed_messages() %}
+{% extends "base.html" %}
+
+{% block title %}Tests - TestFlow AI{% endblock %}
+
+{% block navbar %}
+<nav>
+  <a href="/" class="nav-brand">
+    <div class="logo">TF</div>
+    TestFlow AI
+  </a>
+  <div class="nav-links">
+    <a href="/tests" class="active">Tests</a>
+    <a href="/create-test">Create</a>
+  </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="card card-wide">
+  {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-      {% for msg in messages %}
-        <p class="flash">{{ msg }}</p>
+      {% for category, msg in messages %}
+        <div class="flash {{ 'flash-success' if category == 'success' else 'flash-error' }}">{{ msg }}</div>
       {% endfor %}
     {% endif %}
   {% endwith %}
-  <table border="1">
+
+  <div class="header-row">
+    <div class="page-header" style="margin-bottom: 0;">
+      <h1>Test Scenarios</h1>
+      <p>{{ tests|length }} test{{ 's' if tests|length != 1 }} total</p>
+    </div>
+    <a href="/create-test" class="btn btn-primary">+ New Test</a>
+  </div>
+
+  <div class="divider"></div>
+
+  {% if tests %}
+  <table>
     <thead>
       <tr>
+        <th style="width: 50px;">#</th>
         <th>Name</th>
-        <th>Status</th>
+        <th>URL</th>
+        <th style="width: 120px;">Status</th>
       </tr>
     </thead>
     <tbody>
       {% for test in tests %}
       <tr>
-        <td class="test-name">{{ test.name }}</td>
-        <td class="test-status">{{ test.status }}</td>
+        <td style="color: var(--text-muted);">{{ loop.index }}</td>
+        <td class="test-name" style="font-weight: 600;">{{ test.name }}</td>
+        <td style="color: var(--text-muted); font-size: 0.85rem;">{{ test.application_url }}</td>
+        <td class="test-status">
+          <span class="status-badge {% if test.status == 'Not Run' %}status-not-run{% elif test.status == 'Passed' %}status-passed{% else %}status-failed{% endif %}">
+            {{ test.status }}
+          </span>
+        </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
-</body>
-</html>
+  {% else %}
+  <div class="empty-state">
+    <div class="icon">&#x1F9EA;</div>
+    <p>No test scenarios yet. Create your first one to get started.</p>
+    <a href="/create-test" class="btn btn-primary">+ Create Test</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

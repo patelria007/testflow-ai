@@ -1,21 +1,35 @@
-<!DOCTYPE html>
-<html>
-<head><title>Login - TestFlow</title></head>
-<body>
-  <h1>Login</h1>
-  {% with messages = get_flashed_messages() %}
+{% extends "base.html" %}
+
+{% block title %}Login - TestFlow AI{% endblock %}
+
+{% block content %}
+<div class="card card-centered">
+  <div style="text-align: center; margin-bottom: 2rem;">
+    <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 14px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 24px; font-weight: 800; color: white;">TF</div>
+    <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Welcome back</h1>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">Sign in to TestFlow AI</p>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-      {% for msg in messages %}
-        <p class="flash">{{ msg }}</p>
+      {% for category, msg in messages %}
+        <div class="flash {{ 'flash-error' if category == 'error' else 'flash-success' }}">{{ msg }}</div>
       {% endfor %}
     {% endif %}
   {% endwith %}
+
   <form method="post">
-    <label for="email">Email:</label><br>
-    <input type="email" id="email" name="email" required><br>
-    <label for="password">Password:</label><br>
-    <input type="password" id="password" name="password" required><br><br>
-    <button type="submit" id="login-btn">Login</button>
+    <div class="form-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" placeholder="you@example.com" required>
+    </div>
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" placeholder="Enter your password" required>
+    </div>
+    <div style="margin-top: 1.5rem;">
+      <button type="submit" id="login-btn" class="btn btn-primary btn-full">Sign In</button>
+    </div>
   </form>
-</body>
-</html>
+</div>
+{% endblock %}

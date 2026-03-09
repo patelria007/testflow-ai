@@ -1,23 +1,56 @@
-<!DOCTYPE html>
-<html>
-<head><title>Create Test - TestFlow</title></head>
-<body>
-  <h1>Create Test</h1>
-  <p><a href="/tests">Back to Test List</a></p>
+{% extends "base.html" %}
+
+{% block title %}Create Test - TestFlow AI{% endblock %}
+
+{% block navbar %}
+<nav>
+  <a href="/" class="nav-brand">
+    <div class="logo">TF</div>
+    TestFlow AI
+  </a>
+  <div class="nav-links">
+    <a href="/tests">Tests</a>
+    <a href="/create-test" class="active">Create</a>
+  </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="card card-wide">
+  <div class="page-header">
+    <h1>Create Test Scenario</h1>
+    <p>Define a new test scenario with natural language steps</p>
+  </div>
+
+  <div class="divider"></div>
+
   <form method="post">
-    <label for="test_name">Test Name:</label><br>
-    <input type="text" id="test_name" name="test_name" required><br>
+    <div class="form-group">
+      <label for="test_name">Test Name</label>
+      <input type="text" id="test_name" name="test_name" placeholder="e.g. User Login Flow" required>
+    </div>
 
-    <label for="application_url">Application URL:</label><br>
-    <input type="text" id="application_url" name="application_url" required><br>
+    <div class="form-group">
+      <label for="application_url">Application URL</label>
+      <input type="text" id="application_url" name="application_url" placeholder="e.g. https://myapp.com" required>
+    </div>
 
-    <label for="steps_raw">Test Steps (natural language):</label><br>
-    <textarea id="steps_raw" name="steps_raw" rows="8" cols="60" required></textarea><br>
+    <div class="form-group">
+      <label for="steps_raw">Test Steps (natural language)</label>
+      <textarea id="steps_raw" name="steps_raw" rows="6" placeholder="1. Navigate to the login page&#10;2. Enter username and password&#10;3. Click the Sign In button&#10;4. Verify the dashboard loads" required></textarea>
+    </div>
 
-    <label for="expected_outcome">Expected Outcome:</label><br>
-    <input type="text" id="expected_outcome" name="expected_outcome" required><br><br>
+    <div class="form-group">
+      <label for="expected_outcome">Expected Outcome</label>
+      <input type="text" id="expected_outcome" name="expected_outcome" placeholder="e.g. User is redirected to dashboard" required>
+    </div>
 
-    <button type="submit" id="save-test-btn">Save Test</button>
+    <div class="divider"></div>
+
+    <div style="display: flex; gap: 12px; justify-content: flex-end;">
+      <a href="/tests" class="btn btn-secondary">Cancel</a>
+      <button type="submit" id="save-test-btn" class="btn btn-primary">Save Test</button>
+    </div>
   </form>
-</body>
-</html>
+</div>
+{% endblock %}
