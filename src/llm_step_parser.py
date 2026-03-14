@@ -50,7 +50,7 @@ test steps into structured Selenium commands.
 
 TARGET APPLICATION: {page_url}
 
-AVAILABLE PAGE ELEMENTS (discovered via BeautifulSoup):
+CURRENT PAGE ELEMENTS (discovered via BeautifulSoup — this is the starting page only):
 
 INPUTS:
 {json.dumps(page_elements.get('inputs', []), indent=2)}
@@ -67,7 +67,7 @@ FORMS:
 USER'S TEST STEPS (natural language):
 {steps_raw}
 
-Convert each user step into a structured JSON action. Use ONLY these action types:
+Convert EVERY user step into a structured JSON action. Use ONLY these action types:
 - "navigate": Go to a URL. target = the URL path or full URL.
 - "enter": Type text into an input field. target = the best matching input identifier (name, id, or type). value = what to type.
 - "click": Click an element. target = the best matching button text, link text, or identifier.
@@ -75,20 +75,24 @@ Convert each user step into a structured JSON action. Use ONLY these action type
 - "verify": Check something is on the page. target = text or element to verify.
 - "select": Pick from a dropdown. target = the select element identifier. value = option text.
 
-IMPORTANT RULES:
-1. Match user's intent to the ACTUAL elements listed above.
-2. If the user says "enter username" and there's an input with name="username", use target="username".
-3. If the user says "click sign in" and there's a button with text="Sign in", use target="Sign in".
-4. Use the exact element identifiers from the discovered elements when possible.
-5. If a step is ambiguous, make your best guess based on the available elements.
-6. For login steps, if no explicit credentials are given, use reasonable defaults like "admin"/"admin" or "test@example.com"/"password123".
+CRITICAL RULES:
+1. Generate actions for ALL steps — do NOT skip any step.
+2. The page elements shown are only from the STARTING page. After clicks/navigation, new pages will load with different elements. You must still generate actions for those later steps using your best guess for element names (e.g., "name", "title", "Save", "Submit").
+3. For steps on the current page, match to the ACTUAL elements listed above.
+4. For steps on pages that will appear later (after login, after navigation), use common sense for element names — web apps typically use standard names like "name", "title", "email", "submit", etc.
+5. If the user says "click sign in" and there's a button with text="Sign in", use target="Sign in".
+6. For login steps, if no explicit credentials are given, use reasonable defaults like "admin"/"admin".
 7. Ignore any formatting artifacts like markdown, pipes, or bullet points — focus on the intent.
+8. Each user step should produce at least one action. A single natural language step like "log in with admin/admin" should produce multiple actions (enter username, enter password, click submit).
 
 Return ONLY a valid JSON array, no other text. Example:
 [
   {{"action": "enter", "target": "username", "value": "admin"}},
   {{"action": "enter", "target": "password", "value": "admin"}},
-  {{"action": "click", "target": "Sign in"}}
+  {{"action": "click", "target": "Sign in"}},
+  {{"action": "click", "target": "New project"}},
+  {{"action": "enter", "target": "name", "value": "My Project"}},
+  {{"action": "click", "target": "Save"}}
 ]"""
 
     # Try available Gemini models in order of preference

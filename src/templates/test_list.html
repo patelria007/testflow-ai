@@ -11,6 +11,7 @@
   <div class="nav-links">
     <a href="/tests" class="active">Tests</a>
     <a href="/create-test">Create</a>
+    <a href="/discover">Discover</a>
   </div>
 </nav>
 {% endblock %}
@@ -30,6 +31,7 @@
       <h1>Test Scenarios</h1>
       <p>{{ tests|length }} test{{ 's' if tests|length != 1 }} total</p>
     </div>
+    <a href="/discover" class="btn btn-secondary" style="margin-right: 8px;">AI Discover</a>
     <a href="/create-test" class="btn btn-primary">+ New Test</a>
   </div>
 

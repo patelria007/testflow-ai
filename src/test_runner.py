@@ -418,67 +418,55 @@ def execute_test(application_url, steps_raw, expected_outcome):
         screenshots.append(_take_screenshot(driver, run_id, 0))
         performance["initial_load"] = round(time.time() - start_time, 3)
 
-        # Step 3: Split steps into lines for iterative processing
+        # Step 3: Send ALL steps to LLM at once with current page elements
+        # The LLM returns structured actions for what it can handle on the
+        # current page. After page-changing actions (click/navigate), we
+        # re-discover elements and re-send ONLY the unexecuted remaining
+        # steps to the LLM for the new page context.
         raw_lines = [l.strip() for l in steps_raw.strip().splitlines() if l.strip()]
-        remaining_steps = list(raw_lines)
         global_step = 0
 
-        # Step 4: Iteratively parse and execute steps
-        # After each page change, re-discover elements and re-ask the LLM
-        while remaining_steps:
-            # Ask LLM to parse remaining steps given current page elements
-            remaining_text = "\n".join(remaining_steps)
-            parsed_actions = parse_steps_with_llm(remaining_text, elements, application_url)
+        # First LLM call: parse all steps against the landing page
+        all_actions = parse_steps_with_llm(steps_raw, elements, application_url)
 
-            if not parsed_actions:
+        for action in all_actions:
+            action.setdefault("action", "verify")
+            action.setdefault("target", "")
+            action.setdefault("value", "")
+            global_step += 1
+            step_start = time.time()
+
+            try:
+                result_msg = _execute_step(driver, action, application_url)
+                step_results.append({"step": global_step, "text": str(action),
+                                     "status": "passed", "message": result_msg})
+            except (NoSuchElementException, TimeoutException,
+                    AssertionError, WebDriverException) as e:
+                # Step failed — record failure
+                failure_screenshot = _take_screenshot(driver, run_id, f"{global_step}_failure")
+                screenshots.append(failure_screenshot)
+                failure_message = f"{str(e)} at step {global_step}"
+                diagnosis = _generate_diagnosis(driver, str(action), str(e))
+                status = "Failed"
+                step_results.append({"step": global_step, "text": str(action),
+                                     "status": "failed", "message": str(e)})
                 break
 
-            executed_count = 0
-            for action in parsed_actions:
-                action.setdefault("action", "verify")
-                action.setdefault("target", "")
-                action.setdefault("value", "")
-                global_step += 1
-                step_start = time.time()
+            # Take screenshot after successful step
+            screenshots.append(_take_screenshot(driver, run_id, global_step))
+            step_time = round(time.time() - step_start, 3)
+            performance[f"step_{global_step}"] = step_time
 
+            # Re-discover elements after clicks/navigation (page may have changed)
+            if action.get("action") in ("click", "navigate"):
+                time.sleep(1)
                 try:
-                    result_msg = _execute_step(driver, action, application_url)
-                    step_results.append({"step": global_step, "text": str(action),
-                                         "status": "passed", "message": result_msg})
-                except (NoSuchElementException, TimeoutException,
-                        AssertionError, WebDriverException) as e:
-                    # Step failed — record failure
-                    failure_screenshot = _take_screenshot(driver, run_id, f"{global_step}_failure")
-                    screenshots.append(failure_screenshot)
-                    failure_message = f"{str(e)} at step {global_step}"
-                    diagnosis = _generate_diagnosis(driver, str(action), str(e))
-                    status = "Failed"
-                    step_results.append({"step": global_step, "text": str(action),
-                                         "status": "failed", "message": str(e)})
-                    remaining_steps = []  # stop processing
-                    break
-
-                # Take screenshot after successful step
-                screenshots.append(_take_screenshot(driver, run_id, global_step))
-                step_time = round(time.time() - step_start, 3)
-                performance[f"step_{global_step}"] = step_time
-                executed_count += 1
-
-                # Re-discover elements after clicks/navigation
-                if action.get("action") in ("click", "navigate"):
-                    time.sleep(0.5)
-                    elements = _discover_elements(driver)
-
-            # Remove the steps that the LLM was able to handle
-            # The LLM may generate multiple actions from one line (e.g., "login" → 3 actions)
-            # or skip lines it can't match. We ask the LLM how many lines it covered
-            # by checking: if actions were generated, at least 1 line was processed.
-            # We remove lines one at a time and re-ask for the rest.
-            if executed_count > 0 and remaining_steps:
-                # Remove at least 1 line per iteration to avoid infinite loops
-                remaining_steps = remaining_steps[1:]
-            else:
-                break
+                    WebDriverWait(driver, 5).until(
+                        lambda d: d.execute_script("return document.readyState") == "complete"
+                    )
+                except TimeoutException:
+                    pass
+                elements = _discover_elements(driver)
 
         # Step 5: Verify the expected outcome
         if status == "Passed" and expected_outcome:

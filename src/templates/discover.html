@@ -1,0 +1,423 @@
+{% extends "base.html" %}
+
+{% block title %}Discover Tests - TestFlow AI{% endblock %}
+
+{% block navbar %}
+<nav>
+  <a href="/" class="nav-brand">
+    <div class="logo">TF</div>
+    TestFlow AI
+  </a>
+  <div class="nav-links">
+    <a href="/tests">Tests</a>
+    <a href="/create-test">Create</a>
+    <a href="/discover" class="active">Discover</a>
+  </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+
+{% if not scenarios %}
+<!-- Phase 1: URL Input -->
+<div class="card" style="max-width: 600px;">
+  <div class="page-header">
+    <h1>Discover Test Scenarios</h1>
+    <p>Enter a URL and let AI analyze the application to generate test scenarios automatically</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <form method="POST" action="/discover" id="discover-form" onsubmit="showCrawling()">
+    <div class="form-group">
+      <label for="app_url">Application URL</label>
+      <input type="url" id="app_url" name="app_url" required
+             placeholder="http://localhost:8080"
+             value="{{ request.form.get('app_url', '') }}">
+    </div>
+
+    <div class="options-row">
+      <div class="form-group" style="flex:1;">
+        <label for="num_scenarios">Number of Test Scenarios</label>
+        <select id="num_scenarios" name="num_scenarios">
+          <option value="2" {{ 'selected' if request.form.get('num_scenarios') == '2' }}>2 scenarios</option>
+          <option value="3" {{ 'selected' if request.form.get('num_scenarios', '3') == '3' }}>3 scenarios</option>
+          <option value="5" {{ 'selected' if request.form.get('num_scenarios') == '5' }}>5 scenarios</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;">
+        <label for="complexity">Test Complexity</label>
+        <select id="complexity" name="complexity">
+          <option value="simple" {{ 'selected' if request.form.get('complexity') == 'simple' }}>Simple (2-3 steps)</option>
+          <option value="medium" {{ 'selected' if request.form.get('complexity', 'medium') == 'medium' }}>Medium (3-5 steps)</option>
+          <option value="complex" {{ 'selected' if request.form.get('complexity') == 'complex' }}>Complex (5-8 steps)</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;">
+        <label for="crawl_depth">Crawl Depth</label>
+        <select id="crawl_depth" name="crawl_depth">
+          <option value="1" {{ 'selected' if request.form.get('crawl_depth') == '1' }}>Shallow (1 page)</option>
+          <option value="3" {{ 'selected' if request.form.get('crawl_depth', '3') == '3' }}>Normal (3 pages)</option>
+          <option value="5" {{ 'selected' if request.form.get('crawl_depth') == '5' }}>Deep (5 pages)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="focus_areas">Focus Areas (optional)</label>
+      <div class="chip-container" id="focus-chips">
+        <button type="button" class="chip" onclick="toggleChip(this)" data-value="authentication">Authentication</button>
+        <button type="button" class="chip" onclick="toggleChip(this)" data-value="crud">CRUD Operations</button>
+        <button type="button" class="chip" onclick="toggleChip(this)" data-value="navigation">Navigation</button>
+        <button type="button" class="chip" onclick="toggleChip(this)" data-value="error_handling">Error Handling</button>
+        <button type="button" class="chip" onclick="toggleChip(this)" data-value="search">Search</button>
+        <button type="button" class="chip" onclick="toggleChip(this)" data-value="forms">Form Validation</button>
+      </div>
+      <input type="hidden" id="focus_areas" name="focus_areas" value="">
+    </div>
+
+    <div class="form-group">
+      <label for="user_notes">Custom Notes for AI (optional)</label>
+      <textarea id="user_notes" name="user_notes" rows="3"
+                placeholder="e.g., username: admin, password: admin&#10;Test the project creation workflow specifically&#10;Include a negative test case with wrong credentials">{{ request.form.get('user_notes', '') }}</textarea>
+      <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+        Credentials, specific workflows to test, edge cases to cover, or any context for the AI.
+      </p>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="width: 100%;">
+      Discover Test Scenarios
+    </button>
+  </form>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, msg in messages %}
+        <div class="flash {{ 'flash-success' if category == 'success' else 'flash-error' }}" style="margin-top: 1rem;">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+</div>
+
+<!-- Crawling overlay -->
+<div id="crawl-overlay" style="display:none;">
+  <div class="loading-content">
+    <div class="spinner"></div>
+    <h2>Analyzing Application...</h2>
+    <div class="loading-steps">
+      <div class="loading-step active">Connecting to target application</div>
+      <div class="loading-step">Crawling pages & discovering elements</div>
+      <div class="loading-step">AI generating test scenarios (Gemini)</div>
+    </div>
+    <p class="loading-timer">Elapsed: <span id="elapsed">0</span>s</p>
+  </div>
+</div>
+
+{% else %}
+<!-- Phase 2: Review Generated Scenarios -->
+<div class="card card-wide">
+  <div class="header-row">
+    <div class="page-header" style="margin-bottom: 0;">
+      <h1>Generated Test Scenarios</h1>
+      <p>{{ scenarios|length }} scenarios discovered for <strong>{{ app_url }}</strong></p>
+    </div>
+    <a href="/discover" class="btn btn-secondary">Scan Another URL</a>
+  </div>
+
+  <div class="divider"></div>
+
+  <form method="POST" action="/save-discovered" id="save-form">
+    <input type="hidden" name="app_url" value="{{ app_url }}">
+
+    <div class="scenario-list">
+      {% for scenario in scenarios %}
+      <div class="scenario-card" id="scenario-{{ loop.index0 }}">
+        <div class="scenario-header">
+          <label class="scenario-checkbox">
+            <input type="checkbox" name="selected" value="{{ loop.index0 }}" checked>
+            <span class="checkmark"></span>
+          </label>
+          <div class="scenario-info">
+            <h3 class="scenario-name">{{ scenario.name }}</h3>
+            <span class="category-badge">{{ scenario.category }}</span>
+          </div>
+          <button type="button" class="btn-expand" onclick="toggleExpand({{ loop.index0 }})">Edit</button>
+        </div>
+
+        <div class="scenario-preview">
+          <p class="scenario-steps-preview">{{ scenario.steps[:120] }}{% if scenario.steps|length > 120 %}...{% endif %}</p>
+          <p class="scenario-outcome"><strong>Expected:</strong> {{ scenario.expected_outcome }}</p>
+        </div>
+
+        <div class="scenario-edit" id="edit-{{ loop.index0 }}" style="display:none;">
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label>Test Name</label>
+            <input type="text" name="name_{{ loop.index0 }}" value="{{ scenario.name }}">
+          </div>
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label>Test Steps</label>
+            <textarea name="steps_{{ loop.index0 }}" rows="5">{{ scenario.steps }}</textarea>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label>Expected Outcome</label>
+            <input type="text" name="outcome_{{ loop.index0 }}" value="{{ scenario.expected_outcome }}">
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <input type="hidden" name="total" value="{{ scenarios|length }}">
+
+    <div class="divider"></div>
+
+    <div class="action-row">
+      <label class="select-all-label">
+        <input type="checkbox" id="select-all" checked onchange="toggleAll(this)">
+        Select All
+      </label>
+      <button type="submit" class="btn btn-primary">
+        Save Selected Tests
+      </button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<style>
+  .options-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0;
+  }
+  .options-row select {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .options-row select:focus {
+    border-color: var(--primary);
+    outline: none;
+  }
+  .chip-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chip {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--bg-input);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .chip:hover {
+    border-color: var(--primary);
+    color: var(--text);
+  }
+  .chip.selected {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: var(--primary);
+    color: var(--primary-light);
+    font-weight: 600;
+  }
+  #crawl-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .loading-content { text-align: center; max-width: 420px; }
+  .spinner {
+    width: 48px; height: 48px;
+    border: 4px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1.5rem;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-content h2 { color: var(--text); margin-bottom: 1.5rem; }
+  .loading-steps { text-align: left; max-width: 320px; margin: 0 auto 1.5rem; }
+  .loading-step {
+    padding: 8px 12px; margin-bottom: 6px; border-radius: 8px;
+    font-size: 0.85rem; color: var(--text-muted);
+    background: var(--bg-card); border: 1px solid var(--border);
+    opacity: 0.4; transition: all 0.3s;
+  }
+  .loading-step.active {
+    opacity: 1; color: var(--primary-light);
+    border-color: var(--primary); background: rgba(99, 102, 241, 0.1);
+  }
+  .loading-step.done {
+    opacity: 0.7; color: var(--accent-green); border-color: var(--accent-green);
+  }
+  .loading-timer { color: var(--text-muted); font-size: 0.9rem; }
+  #elapsed { color: var(--primary-light); font-weight: 600; }
+
+  /* Scenario cards */
+  .scenario-list { display: flex; flex-direction: column; gap: 1rem; }
+  .scenario-card {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    transition: border-color 0.2s;
+  }
+  .scenario-card:hover { border-color: var(--primary); }
+  .scenario-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .scenario-checkbox {
+    position: relative;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+  }
+  .scenario-checkbox input { display: none; }
+  .checkmark {
+    width: 22px; height: 22px;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .scenario-checkbox input:checked + .checkmark {
+    background: var(--primary);
+    border-color: var(--primary);
+  }
+  .scenario-checkbox input:checked + .checkmark::after {
+    content: '';
+    width: 6px; height: 10px;
+    border: solid white; border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    margin-top: -2px;
+  }
+  .scenario-info { flex: 1; }
+  .scenario-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .category-badge {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--primary-light);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+  }
+  .btn-expand {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 4px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+  }
+  .btn-expand:hover {
+    border-color: var(--primary);
+    color: var(--primary-light);
+  }
+  .scenario-preview {
+    margin-top: 0.75rem;
+    padding-left: 2.5rem;
+  }
+  .scenario-steps-preview {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    white-space: pre-line;
+  }
+  .scenario-outcome {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+  }
+  .scenario-outcome strong { color: var(--accent-green); }
+  .scenario-edit {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--bg-card);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .scenario-edit label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .action-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .select-all-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .select-all-label input { accent-color: var(--primary); }
+</style>
+
+<script>
+function toggleChip(el) {
+  el.classList.toggle('selected');
+  var selected = document.querySelectorAll('.chip.selected');
+  var values = [];
+  selected.forEach(function(c) { values.push(c.dataset.value); });
+  document.getElementById('focus_areas').value = values.join(',');
+}
+
+function showCrawling() {
+  var overlay = document.getElementById('crawl-overlay');
+  overlay.style.display = 'flex';
+  var steps = document.querySelectorAll('#crawl-overlay .loading-step');
+  var elapsed = document.getElementById('elapsed');
+  var seconds = 0;
+  setInterval(function() {
+    seconds++;
+    elapsed.textContent = seconds;
+    if (seconds >= 3 && steps.length > 0) { steps[0].classList.remove('active'); steps[0].classList.add('done'); steps[1].classList.add('active'); }
+    if (seconds >= 8 && steps.length > 1) { steps[1].classList.remove('active'); steps[1].classList.add('done'); steps[2].classList.add('active'); }
+  }, 1000);
+}
+
+function toggleExpand(index) {
+  var edit = document.getElementById('edit-' + index);
+  edit.style.display = edit.style.display === 'none' ? 'block' : 'none';
+}
+
+function toggleAll(checkbox) {
+  var checks = document.querySelectorAll('input[name="selected"]');
+  checks.forEach(function(c) { c.checked = checkbox.checked; });
+}
+</script>
+
+{% endblock %}

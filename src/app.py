@@ -24,6 +24,8 @@ from src.db import (init_db, insert_test, get_all_tests, get_test_by_id,
                     update_test_status, insert_test_run, get_latest_test_run,
                     create_user, authenticate_user)
 from src.test_runner import execute_test
+from src.site_crawler import crawl_site
+from src.scenario_generator import generate_scenarios
 
 
 def create_app() -> Flask:
@@ -241,6 +243,76 @@ def create_app() -> Flask:
             "performance": performance,
             "email_sent": email_sent,
         }
+
+    # --- Auto-Discovery: Crawl + LLM generates test scenarios ---
+
+    @app.route("/discover", methods=["GET", "POST"])
+    def discover():
+        """Auto-discover test scenarios for a target application.
+
+        GET  — show the URL input form.
+        POST — crawl the URL, send to Gemini, return generated scenarios for review.
+        """
+        if not session.get("logged_in"):
+            return redirect(url_for("login"))
+
+        if request.method == "POST":
+            app_url = request.form.get("app_url", "").strip()
+            user_notes = request.form.get("user_notes", "").strip()
+            num_scenarios = int(request.form.get("num_scenarios", 3))
+            complexity = request.form.get("complexity", "medium")
+            crawl_depth = int(request.form.get("crawl_depth", 3))
+            focus_areas = request.form.get("focus_areas", "")
+            if not app_url:
+                flash("Please enter a URL", "error")
+                return render_template("discover.html", scenarios=None)
+
+            # Crawl the target application with specified depth
+            site_map = crawl_site(app_url, max_pages=crawl_depth, user_notes=user_notes)
+            if site_map["error"] and not site_map["pages"]:
+                flash(f"Could not reach {app_url}: {site_map['error']}", "error")
+                return render_template("discover.html", scenarios=None)
+
+            # Generate test scenarios with Gemini using all user options
+            try:
+                scenarios = generate_scenarios(
+                    site_map,
+                    max_scenarios=num_scenarios,
+                    complexity=complexity,
+                    focus_areas=focus_areas,
+                )
+            except Exception as e:
+                flash(f"AI generation failed: {str(e)}", "error")
+                return render_template("discover.html", scenarios=None)
+
+            return render_template("discover.html",
+                                   scenarios=scenarios, app_url=app_url)
+
+        return render_template("discover.html", scenarios=None)
+
+    @app.route("/save-discovered", methods=["POST"])
+    def save_discovered():
+        """Save user-selected auto-generated test scenarios to the database."""
+        if not session.get("logged_in"):
+            return redirect(url_for("login"))
+
+        app_url = request.form.get("app_url", "")
+        total = int(request.form.get("total", 0))
+        selected = request.form.getlist("selected")
+
+        saved_count = 0
+        for idx_str in selected:
+            idx = int(idx_str)
+            name = request.form.get(f"name_{idx}", f"Test {idx+1}")
+            steps = request.form.get(f"steps_{idx}", "")
+            outcome = request.form.get(f"outcome_{idx}", "")
+
+            if name and steps:
+                insert_test(name, app_url, steps, outcome)
+                saved_count += 1
+
+        flash(f"{saved_count} test scenario{'s' if saved_count != 1 else ''} saved successfully", "success")
+        return redirect(url_for("test_list"))
 
     @app.route("/")
     def index():
