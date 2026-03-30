@@ -431,7 +431,10 @@ def create_app() -> Flask:
 
         # Determine pass/fail from expected_outcome
         expected = test["expected_outcome"]
-        if "payment" in expected.lower() or "timeout" in expected.lower():
+        expected_lower = expected.lower()
+
+        if "payment" in expected_lower or "timeout" in expected_lower:
+            # Application bug failure path
             status = "Failed"
             failure_step = min(len(step_lines), 7)
             failure_message = f"Payment API timeout at step {failure_step}"
@@ -440,7 +443,7 @@ def create_app() -> Flask:
                 "summary": "Payment API timeout — the payment gateway is not responding.",
                 "explanation": f"The test failed at step {failure_step} because the payment API "
                                "did not respond within the expected timeout. This is an application-side "
-                               "issue, not a problem with the test design. The payment gateway may be "
+                               "issue, not a problem with the test design. Payment gateway may be "
                                "down or experiencing high latency.",
                 "suggestion": "Investigate the payment gateway status and application server logs.",
                 "proposed_fix": "Check the payment gateway service status. If the gateway is a "
@@ -449,12 +452,57 @@ def create_app() -> Flask:
                                 "threshold or adding a retry mechanism in the payment processing code.",
             }
             email_sent = True
-            # Generate failure screenshot
             fail_path = _generate_step_screenshot(
                 run_id, "failure_point", f"FAILURE: {failure_message}",
                 "error", test["application_url"]
             )
             screenshots.append(fail_path)
+
+        elif "element" in expected_lower or "selector" in expected_lower or "not found" in expected_lower:
+            # Test design failure path
+            status = "Failed"
+            failure_step = min(len(step_lines), 2)
+            failure_message = f"Could not find element at step {failure_step}"
+            diagnosis = {
+                "category": "test_design",
+                "summary": "The test references an element that doesn't exist on the page.",
+                "explanation": f"Step {failure_step} failed because the referenced element was "
+                               "not found on the current page. The test step uses a wrong name "
+                               "or the step order is incorrect.",
+                "suggestion": "Update the test steps to match the actual elements on the page.",
+                "proposed_fix": "1. Navigate to /dashboard\n"
+                                "2. Click the Submit button\n"
+                                "3. Verify success message is visible",
+            }
+            email_sent = True
+            fail_path = _generate_step_screenshot(
+                run_id, "failure_point", f"FAILURE: {failure_message}",
+                "error", test["application_url"]
+            )
+            screenshots.append(fail_path)
+
+        elif "connection" in expected_lower or "unreachable" in expected_lower or "network" in expected_lower:
+            # Environment failure path
+            status = "Failed"
+            failure_step = 1
+            failure_message = f"Connection refused at step {failure_step}"
+            diagnosis = {
+                "category": "environment",
+                "summary": "The target application or network is not responding.",
+                "explanation": "The test failed because the target application could not be reached. "
+                               "This typically indicates the target application is down, the URL is "
+                               "incorrect, or there is a network connectivity issue.",
+                "suggestion": "Verify the target application is running and accessible at the configured URL.",
+                "proposed_fix": "Check that the application server is running, the port is correct, "
+                                "and there are no firewall or network issues blocking the connection.",
+            }
+            email_sent = True
+            fail_path = _generate_step_screenshot(
+                run_id, "failure_point", f"FAILURE: {failure_message}",
+                "error", test["application_url"]
+            )
+            screenshots.append(fail_path)
+
         else:
             status = "Passed"
             failure_message = None

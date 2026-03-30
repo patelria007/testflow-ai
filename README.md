@@ -99,16 +99,61 @@ Feature: Test Execution and Monitoring
 17 steps passed, 0 failed, 0 skipped
 ```
 
-### Run All Implemented Acceptance Tests (Scenarios 1 & 2)
+### Run Scenario 3 (Intelligent Failure Diagnosis)
 ```bash
-docker-compose run --rm testflow behave acceptance_tests/test_creation.feature acceptance_tests/test_execution.feature
+docker-compose run --rm testflow behave acceptance_tests/failure_diagnosis.feature
 ```
 
 Expected output:
 ```
-2 features passed, 0 failed, 0 skipped
+Feature: Intelligent Failure Diagnosis
+
+  Scenario: View AI diagnosis with category classification when test fails
+    Given I am logged in and have a failing test "Payment Processing" ...       # PASSED
+    When I run the failing test                                                 # PASSED
+    Then I should see the test status is "Failed"                               # PASSED
+    And I should see a failure category badge "Application Bug"                 # PASSED
+    And I should see a diagnosis summary                                        # PASSED
+    And I should see a diagnosis explanation containing "payment"               # PASSED
+    And I should see a recommendation section                                   # PASSED
+    And I should see a proposed fix section                                     # PASSED
+    And I should see a "Re-run Test" action button                              # PASSED
+
+  Scenario: View test design failure and apply AI-suggested fix
+    Given I am logged in and have a failing test "Broken Selector Test" ...     # PASSED
+    When I run the failing test                                                 # PASSED
+    Then I should see the test status is "Failed"                               # PASSED
+    And I should see a failure category badge "Test Design Issue"               # PASSED
+    And I should see an "Apply Suggested Fix" button                            # PASSED
+    And I should see an "Edit Test Manually" link                               # PASSED
+    When I click "Apply Suggested Fix"                                          # PASSED
+    Then I should be redirected to the test list                                # PASSED
+    And I should see a flash message "Test steps updated with AI suggestion"    # PASSED
+    And the test status should be reset to "Not Run"                            # PASSED
+
+  Scenario: View environment failure diagnosis with retry option
+    Given I am logged in and have a failing test "Unreachable App Test" ...     # PASSED
+    When I run the failing test                                                 # PASSED
+    Then I should see the test status is "Failed"                               # PASSED
+    And I should see a failure category badge "Environment Issue"               # PASSED
+    And I should see a diagnosis explanation containing "could not be reached"  # PASSED
+    And I should see a "Retry Test" action button                               # PASSED
+
+1 feature passed, 0 failed, 0 skipped
 3 scenarios passed, 0 failed, 0 skipped
-26 steps passed, 0 failed, 0 skipped
+25 steps passed, 0 failed, 0 skipped
+```
+
+### Run All Implemented Acceptance Tests (Scenarios 1, 2 & 3)
+```bash
+docker-compose run --rm testflow behave acceptance_tests/test_creation.feature acceptance_tests/test_execution.feature acceptance_tests/failure_diagnosis.feature
+```
+
+Expected output:
+```
+3 features passed, 0 failed, 0 skipped
+6 scenarios passed, 0 failed, 0 skipped
+51 steps passed, 0 failed, 0 skipped
 ```
 
 ### Run All Acceptance Tests
@@ -116,7 +161,7 @@ Expected output:
 docker-compose run --rm testflow behave acceptance_tests/
 ```
 
-Note: Scenarios 3-4 are not yet implemented and will error with `NotImplementedError`.
+Note: Scenario 4 (SWAP Challenge) is not yet implemented and will error with `NotImplementedError`.
 
 ## Running the Application (Interactive Mode with Real Target App)
 
@@ -422,7 +467,10 @@ When acceptance tests run (`TESTFLOW_SIMULATE=1`), the real execution engine is 
 5. **Scenario 1**: Selenium creates a test via the form and verifies it appears in the list
 6. **Scenario 2A**: Pre-seeded test runs → status "Passed", execution time, screenshots, metrics
 7. **Scenario 2B**: Pre-seeded failing test → status "Failed", error message, AI diagnosis, email notification
-8. After tests complete, the browser and server shut down
+8. **Scenario 3A**: Application bug failure → category badge "Application Bug", diagnosis summary, explanation, recommendation, proposed fix, "Re-run Test" button
+9. **Scenario 3B**: Test design failure → category badge "Test Design Issue", "Apply Suggested Fix" button → click → test steps updated, status reset to "Not Run"
+10. **Scenario 3C**: Environment failure → category badge "Environment Issue", explanation about unreachable target, "Retry Test" button
+11. After tests complete, the browser and server shut down
 
 ## Acceptance Test Scenarios
 
@@ -438,6 +486,9 @@ When acceptance tests run (`TESTFLOW_SIMULATE=1`), the real execution engine is 
 ### Scenario 3: Intelligent Failure Diagnosis (Implemented)
 - **User Story**: As a developer, I want to understand why a test failed immediately so I can fix issues faster
 - **Flow**: Test fails → AI analyzes error, page state, and available elements → Classifies failure as test design issue, application bug, or environment problem → Provides detailed explanation, recommendation, and proposed fix → Actionable buttons: "Apply Suggested Fix" (auto-updates test steps), "Edit Test Manually", or "Re-run Test"
+- **Scenario 3A**: Application bug → "Application Bug" badge, diagnosis with payment-related explanation, "Re-run Test" button
+- **Scenario 3B**: Test design issue → "Test Design Issue" badge, "Apply Suggested Fix" button updates test steps, status resets to "Not Run"
+- **Scenario 3C**: Environment issue → "Environment Issue" badge, explanation about unreachable target, "Retry Test" button
 
 ### Scenario 4: SWAP CHALLENGE - Self-Healing Tests (Not yet implemented)
 - **User Story**: As a development team, I want tests to adapt to UI changes automatically
@@ -469,10 +520,12 @@ testflow-ai/
 ├── acceptance_tests/                    # BDD test suite
 │   ├── test_creation.feature            # Scenario 1 (Gherkin)
 │   ├── test_execution.feature           # Scenario 2 (Gherkin)
+│   ├── failure_diagnosis.feature        # Scenario 3 (Gherkin) - 3 sub-scenarios
 │   ├── ai_capabilities.feature          # Scenario 4 - SWAP CHALLENGE (Gherkin)
 │   ├── steps/                           # Step definitions
 │   │   ├── test_creation_steps.py       # Selenium-based steps for Scenario 1
 │   │   ├── test_execution_steps.py      # Selenium steps for Scenario 2 (17 steps)
+│   │   ├── failure_diagnosis_steps.py   # Selenium steps for Scenario 3 (25 steps)
 │   │   └── ai_capabilities_steps.py     # Stubs for Scenario 4
 │   └── environment.py                   # Flask + Selenium setup/teardown
 ├── Dockerfile
@@ -481,6 +534,94 @@ testflow-ai/
 ├── README.md
 ├── CHANGELOG.md
 └── PRODUCT_SPECIFICATION.md
+```
+
+## Demo Guide (Step-by-Step)
+
+This section provides a complete walkthrough for demoing all features of TestFlow AI, including the target application setup.
+
+### Prerequisites
+- **Docker Desktop** installed and running
+- **Python 3.11+** installed locally
+- **Google Chrome** installed
+- **Google Gemini API key** (free from [Google AI Studio](https://aistudio.google.com/apikey))
+
+### Step 1: Start the Target Application (Kanboard)
+```bash
+docker run -d -p 8080:80 --name kanboard kanboard/kanboard
+```
+- **Target App URL**: `http://localhost:8080`
+- **Credentials**: `admin` / `admin`
+
+### Step 2: Configure and Start TestFlow AI
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure Gemini API key
+mkdir -p .claude
+echo "gemini_token='YOUR_GEMINI_API_KEY'" > .claude/.config
+
+# Start the application
+python3 -c "from src.app import create_app; app = create_app(); app.run(port=5001)"
+```
+- **TestFlow AI URL**: `http://localhost:5001`
+- **Login**: `test@example.com` / `password123`
+
+### Step 3: Demo - Create a Test (Scenario 1)
+1. Open `http://localhost:5001` and log in
+2. Click **"+ New Test"**
+3. Fill in:
+   - **Name**: `Kanboard Login & Create Project`
+   - **URL**: `http://localhost:8080`
+   - **Steps**: `Log into the application using admin as both username and password. After logging in, click on New project. Type My Demo Project as the project name. Save the project.`
+   - **Expected Outcome**: `My Demo Project`
+4. Click **"Save Test"** → test appears in list with status "Not Run"
+
+### Step 4: Demo - Run a Test (Scenario 2)
+1. Click **"Run Test"** on the test you just created
+2. Watch the loading overlay while:
+   - Headless Chrome navigates to Kanboard
+   - BeautifulSoup discovers page elements
+   - Gemini translates steps to Selenium commands
+   - Screenshots are taken at each step
+3. View results: status, execution time, real screenshots, performance metrics
+
+### Step 5: Demo - Failure Diagnosis (Scenario 3)
+1. Create a test that will fail:
+   - **Name**: `Broken Button Test`
+   - **URL**: `http://localhost:8080`
+   - **Steps**: `Navigate to the login page. Click the non-existent Submit Order button.`
+   - **Expected Outcome**: `Order confirmation`
+2. Click **"Run Test"** → test will fail
+3. On the results page, observe:
+   - **Failure Category Badge** (color-coded: yellow/red/blue)
+   - **AI Diagnosis** with detailed explanation
+   - **Recommendation** section with next steps
+   - **Proposed Fix** with improved test steps
+   - **Action Buttons**: "Apply Suggested Fix", "Edit Test Manually", or "Re-run Test"
+4. Click **"Apply Suggested Fix"** → test steps auto-update from AI suggestion
+
+### Step 6: Demo - Auto-Discovery
+1. Click **"AI Discover"** in the nav bar
+2. Enter `http://localhost:8080`, set 3 scenarios, Medium complexity
+3. Click **"Discover Test Scenarios"** → AI crawls Kanboard and generates tests
+4. Select scenarios and click **"Save Selected Tests"**
+
+### Step 7: Run Acceptance Tests (Docker)
+```bash
+# Build Docker image
+docker-compose build
+
+# Run all implemented scenarios (1, 2, 3)
+docker-compose run --rm testflow behave acceptance_tests/test_creation.feature acceptance_tests/test_execution.feature acceptance_tests/failure_diagnosis.feature
+
+# Expected: 3 features passed, 6 scenarios passed, 51 steps passed
+```
+
+### Step 8: Cleanup
+```bash
+docker stop kanboard && docker rm kanboard
 ```
 
 ## Troubleshooting

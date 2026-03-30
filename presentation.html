@@ -428,14 +428,14 @@
     <p>QA engineer creates a test in natural language &mdash; login, fill form, save, verify in test list.</p>
   </div>
   <div class="scenario-box">
-    <span class="num" style="background: rgba(251,191,36,0.2); color: #fbbf24;">2</span>
-    <strong>Test Execution & Results</strong> <span class="tag tag-purple" style="font-size: 0.75rem;">Stub</span>
+    <span class="num" style="background: rgba(52,211,153,0.2); color: #34d399;">2</span>
+    <strong>Test Execution & Results</strong> <span class="tag tag-green" style="font-size: 0.75rem;">Implemented</span>
     <p>Run a saved test, see pass status, execution time, screenshots, and performance metrics.</p>
   </div>
   <div class="scenario-box">
-    <span class="num" style="background: rgba(251,191,36,0.2); color: #fbbf24;">3</span>
-    <strong>Failure Diagnosis</strong> <span class="tag tag-purple" style="font-size: 0.75rem;">Stub</span>
-    <p>When a test fails, see failure details, screenshot at failure point, and AI-powered diagnosis.</p>
+    <span class="num" style="background: rgba(52,211,153,0.2); color: #34d399;">3</span>
+    <strong>Intelligent Failure Diagnosis</strong> <span class="tag tag-green" style="font-size: 0.75rem;">Implemented</span>
+    <p>AI categorizes failures (test design / app bug / environment), provides fix suggestions, and one-click apply.</p>
   </div>
   <div class="scenario-box">
     <span class="num" style="background: rgba(251,191,36,0.2); color: #fbbf24;">4</span>
@@ -469,7 +469,7 @@
 <!-- SLIDE 8: Feature 2 - Test Execution (2 scenarios) -->
 <div class="slide" id="slide-8">
   <h2>Feature 2: Test Execution & Monitoring</h2>
-  <p style="color: #94a3b8; margin-bottom: 20px;">2 scenarios &bull; <span style="color: #fbbf24;">Stubs (NotImplementedError)</span></p>
+  <p style="color: #94a3b8; margin-bottom: 20px;">2 scenarios &bull; 17 steps &bull; <span style="color: #34d399;">Implemented</span></p>
   <div class="code-block" style="font-size: 0.85rem;">
     <span class="keyword">Feature:</span> Test Execution and Monitoring<br>
     &nbsp;&nbsp;<span class="comment">As a product manager, I want to execute tests and monitor their results</span><br><br>
@@ -491,24 +491,27 @@
   </div>
 </div>
 
-<!-- SLIDE 9: Feature 3 - AI Capabilities / SWAP (1 scenario) -->
+<!-- SLIDE 9: Feature 3 - Intelligent Failure Diagnosis -->
 <div class="slide" id="slide-9">
-  <h2>Feature 3: AI-Powered Capabilities</h2>
-  <p style="color: #94a3b8; margin-bottom: 20px;">1 scenario (SWAP Challenge) &bull; <span style="color: #fbbf24;">Stub (NotImplementedError)</span></p>
-  <div class="code-block">
-    <span class="keyword">Feature:</span> AI-Powered Testing Capabilities<br>
-    &nbsp;&nbsp;<span class="comment">As a development team, I want AI to intelligently adapt tests and diagnose failures</span><br><br>
-    &nbsp;&nbsp;<span class="keyword">Scenario 4 (SWAP):</span> Self-healing test adapts to UI changes<br>
-    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">Given</span> I have a test scenario <span class="string">"Add Product to Wishlist"</span><br>
-    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">And</span> the test clicks a button with selector <span class="string">"button.add-wishlist"</span><br>
-    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">And</span> the application UI is updated and the button class changes to <span class="string">"btn-add-to-wishlist"</span><br>
-    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">When</span> I execute the test after the UI change<br>
-    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">Then</span> the AI should detect the selector is no longer valid<br>
-    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">And</span> the AI should identify the equivalent button using visual and textual analysis<br>
-    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">And</span> the AI should update the test selector to <span class="string">"btn-add-to-wishlist"</span><br>
-    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">And</span> the test should pass successfully<br>
-    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">And</span> I should see a notification <span class="string">"Test auto-healed: Updated button selector"</span><br>
-    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">And</span> the test should be marked as <span class="string">"Requires Review"</span> for approval
+  <h2>Feature 3: Intelligent Failure Diagnosis</h2>
+  <p style="color: #94a3b8; margin-bottom: 20px;">3 scenarios &bull; 25 steps &bull; <span style="color: #34d399;">Implemented</span></p>
+  <div class="code-block" style="font-size: 0.85rem;">
+    <span class="keyword">Feature:</span> Intelligent Failure Diagnosis<br>
+    &nbsp;&nbsp;<span class="comment">As a developer, I want to understand why a test failed immediately</span><br><br>
+    &nbsp;&nbsp;<span class="keyword">Scenario 3A:</span> Application bug &mdash; category badge, diagnosis, re-run button<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">Given</span> a failing test with expected outcome <span class="string">"Payment confirmation"</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">Then</span> I should see category badge <span class="string">"Application Bug"</span> (red)<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">And</span> diagnosis summary, explanation, recommendation, proposed fix<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">And</span> a <span class="string">"Re-run Test"</span> action button<br><br>
+    &nbsp;&nbsp;<span class="keyword">Scenario 3B:</span> Test design issue &mdash; apply AI-suggested fix<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">Given</span> a failing test with <span class="string">"element not found"</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">Then</span> I should see category badge <span class="string">"Test Design Issue"</span> (yellow)<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">When</span> I click <span class="string">"Apply Suggested Fix"</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">Then</span> test steps updated, status reset to <span class="string">"Not Run"</span><br><br>
+    &nbsp;&nbsp;<span class="keyword">Scenario 3C:</span> Environment issue &mdash; retry option<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">Given</span> a failing test with <span class="string">"connection refused"</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">Then</span> I should see category badge <span class="string">"Environment Issue"</span> (blue)<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="step">And</span> a <span class="string">"Retry Test"</span> action button
   </div>
 </div>
 
@@ -575,67 +578,80 @@
 <!-- SLIDE 12: Deliverable Status -->
 <div class="slide" id="slide-12">
   <h2>Deliverable Status</h2>
-  <div class="two-col">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1100px; text-align: left;">
     <div class="col">
-      <h3 style="color: #34d399;">Deliverable 1 &check;</h3>
+      <h3 style="color: #34d399;">Deliverable 1 &amp; 2 &check;</h3>
       <div class="checklist">
         <div class="check-item"><span class="check-icon check-done">&check;</span> 4 BDD scenarios in .feature files</div>
-        <div class="check-item"><span class="check-icon check-done">&check;</span> Step stubs wired via Behave</div>
-        <div class="check-item"><span class="check-icon check-done">&check;</span> Scenarios 2-4 raise NotImplementedError</div>
-        <div class="check-item"><span class="check-icon check-done">&check;</span> README with setup instructions</div>
+        <div class="check-item"><span class="check-icon check-done">&check;</span> Full Scenario 1 implementation</div>
+        <div class="check-item"><span class="check-icon check-done">&check;</span> 9 steps pass end-to-end</div>
+        <div class="check-item"><span class="check-icon check-done">&check;</span> Release tag <code>prototype-1</code></div>
       </div>
     </div>
     <div class="col">
-      <h3 style="color: #34d399;">Deliverable 2 &check;</h3>
+      <h3 style="color: #34d399;">Deliverable 3 &check;</h3>
       <div class="checklist">
-        <div class="check-item"><span class="check-icon check-done">&check;</span> Full implementation of Scenario 1</div>
-        <div class="check-item"><span class="check-icon check-done">&check;</span> Acceptance test passes end-to-end</div>
-        <div class="check-item"><span class="check-icon check-done">&check;</span> CHANGELOG.md</div>
-        <div class="check-item"><span class="check-icon check-done">&check;</span> Release tag <code>prototype-1</code></div>
-        <div class="check-item"><span class="check-icon check-done">&check;</span> Code comments referencing scenarios</div>
+        <div class="check-item"><span class="check-icon check-done">&check;</span> Scenario 2: Test execution &amp; monitoring</div>
+        <div class="check-item"><span class="check-icon check-done">&check;</span> 17 steps (pass + fail paths)</div>
+        <div class="check-item"><span class="check-icon check-done">&check;</span> Real screenshots, metrics, email</div>
+        <div class="check-item"><span class="check-icon check-done">&check;</span> Release tag <code>prototype-2</code></div>
+      </div>
+    </div>
+    <div class="col">
+      <h3 style="color: #34d399;">Deliverable 4 &check;</h3>
+      <div class="checklist">
+        <div class="check-item"><span class="check-icon check-done">&check;</span> Scenario 3: Failure diagnosis (3 sub-scenarios)</div>
+        <div class="check-item"><span class="check-icon check-done">&check;</span> 25 steps &mdash; all 3 failure categories</div>
+        <div class="check-item"><span class="check-icon check-done">&check;</span> Apply Suggested Fix workflow</div>
+        <div class="check-item"><span class="check-icon check-done">&check;</span> Release tag <code>prototype-3</code></div>
+      </div>
+    </div>
+    <div class="col">
+      <h3 style="color: #fbbf24;">SWAP Challenge</h3>
+      <div class="checklist">
+        <div class="check-item"><span class="check-icon check-pending">4</span> Self-healing tests (not yet implemented)</div>
       </div>
     </div>
   </div>
-  <div class="progress-bar" style="margin-top: 40px;">
-    <div class="progress-fill" style="width: 25%;"></div>
+  <div class="progress-bar" style="margin-top: 30px;">
+    <div class="progress-fill" style="width: 75%;"></div>
   </div>
-  <p style="color: #94a3b8; margin-top: 10px;">1 of 4 scenarios implemented (25%)</p>
+  <p style="color: #94a3b8; margin-top: 10px;">3 of 4 scenarios implemented (75%) &bull; 6 scenarios &bull; 51 steps passing</p>
 </div>
 
-<!-- SLIDE 13: Deliverable 2 Deep Dive -->
+<!-- SLIDE 13: Implementation Deep Dive -->
 <div class="slide" id="slide-13">
-  <h2>Deliverable 2: Prototype of Scenario 1</h2>
+  <h2>Implementation Overview</h2>
   <div class="two-col">
     <div class="col">
-      <h3 style="color: #60a5fa;">Implementation</h3>
-      <div class="item-text" style="line-height: 1.9; font-size: 0.95rem;">
-        <strong>app.py</strong> &mdash; Flask routes<br>
-        &nbsp;&nbsp;&bull; <code>/login</code> &mdash; POST authenticates, sets session<br>
-        &nbsp;&nbsp;&bull; <code>/create-test</code> &mdash; GET shows form, POST saves to DB<br>
-        &nbsp;&nbsp;&bull; <code>/tests</code> &mdash; lists all tests with status<br><br>
-        <strong>db.py</strong> &mdash; SQLite helpers<br>
-        &nbsp;&nbsp;&bull; <code>init_db()</code> &mdash; creates test_scenarios table<br>
-        &nbsp;&nbsp;&bull; <code>insert_test()</code> &mdash; stores name, URL, steps, outcome<br>
-        &nbsp;&nbsp;&bull; <code>reset_db()</code> &mdash; clean state between scenarios<br><br>
-        <strong>templates/</strong> &mdash; 3 HTML pages<br>
-        &nbsp;&nbsp;&bull; login.html, create_test.html, test_list.html
+      <h3 style="color: #60a5fa;">Core Application</h3>
+      <div class="item-text" style="line-height: 1.8; font-size: 0.9rem;">
+        <strong>app.py</strong> &mdash; 15 Flask routes<br>
+        &nbsp;&nbsp;&bull; Auth, CRUD, execution, results, settings<br>
+        &nbsp;&nbsp;&bull; <code>/apply-fix/&lt;id&gt;</code> &mdash; AI fix workflow<br>
+        &nbsp;&nbsp;&bull; <code>/discover</code> &mdash; auto-generate tests<br><br>
+        <strong>failure_analyzer.py</strong> &mdash; AI diagnosis<br>
+        &nbsp;&nbsp;&bull; Gemini LLM + rule-based fallback<br>
+        &nbsp;&nbsp;&bull; 3 categories: test_design, app_bug, env<br><br>
+        <strong>test_runner.py</strong> &mdash; Selenium engine<br>
+        &nbsp;&nbsp;&bull; BeautifulSoup element discovery<br>
+        &nbsp;&nbsp;&bull; Gemini step translation<br>
+        &nbsp;&nbsp;&bull; Real screenshots + metrics
       </div>
     </div>
     <div class="col">
-      <h3 style="color: #a78bfa;">Testing Infrastructure</h3>
-      <div class="item-text" style="line-height: 1.9; font-size: 0.95rem;">
-        <strong>environment.py</strong><br>
-        &nbsp;&nbsp;&bull; Starts Flask in background thread<br>
-        &nbsp;&nbsp;&bull; Launches headless Chromium via Selenium<br>
-        &nbsp;&nbsp;&bull; Resets DB before each scenario<br>
-        &nbsp;&nbsp;&bull; Tears down browser + server after all tests<br><br>
-        <strong>test_creation_steps.py</strong><br>
-        &nbsp;&nbsp;&bull; 9 step definitions (Given/When/Then)<br>
-        &nbsp;&nbsp;&bull; Real Selenium interactions (not mocks)<br>
-        &nbsp;&nbsp;&bull; Fills forms, clicks buttons, asserts content<br><br>
-        <strong>Deliverables</strong><br>
-        &nbsp;&nbsp;&bull; CHANGELOG.md with all changes since D1<br>
-        &nbsp;&nbsp;&bull; Git release tag <code>prototype-1</code>
+      <h3 style="color: #a78bfa;">Acceptance Tests</h3>
+      <div class="item-text" style="line-height: 1.8; font-size: 0.9rem;">
+        <strong>3 feature files &bull; 51 steps total</strong><br><br>
+        <strong>test_creation.feature</strong><br>
+        &nbsp;&nbsp;&bull; 1 scenario, 9 steps<br><br>
+        <strong>test_execution.feature</strong><br>
+        &nbsp;&nbsp;&bull; 2 scenarios, 17 steps<br>
+        &nbsp;&nbsp;&bull; Pass path + failure report<br><br>
+        <strong>failure_diagnosis.feature</strong><br>
+        &nbsp;&nbsp;&bull; 3 scenarios, 25 steps<br>
+        &nbsp;&nbsp;&bull; App bug, test design, environment<br>
+        &nbsp;&nbsp;&bull; Apply fix + status reset
       </div>
     </div>
   </div>
@@ -644,30 +660,68 @@
 <!-- SLIDE 14: Demo / Run -->
 <div class="slide" id="slide-14">
   <h2>Running the Tests</h2>
-  <div class="code-block" style="margin-bottom: 24px;">
+  <div class="code-block" style="margin-bottom: 24px; font-size: 0.85rem;">
     <span class="comment"># Build the Docker container</span><br>
     $ docker-compose build<br><br>
-    <span class="comment"># Run Scenario 1 (passes)</span><br>
-    $ docker-compose run --rm testflow behave acceptance_tests/test_creation.feature<br><br>
-    <span class="step">1 feature passed, 0 failed, 0 skipped</span><br>
-    <span class="step">1 scenario passed, 0 failed, 0 skipped</span><br>
-    <span class="step">9 steps passed, 0 failed, 0 skipped</span><br><br>
-    <span class="comment"># Run all tests (Scenarios 2-4 fail with NotImplementedError)</span><br>
-    $ docker-compose run --rm testflow behave acceptance_tests/
+    <span class="comment"># Run all implemented acceptance tests (Scenarios 1, 2 &amp; 3)</span><br>
+    $ docker-compose run --rm testflow behave \<br>
+    &nbsp;&nbsp;acceptance_tests/test_creation.feature \<br>
+    &nbsp;&nbsp;acceptance_tests/test_execution.feature \<br>
+    &nbsp;&nbsp;acceptance_tests/failure_diagnosis.feature<br><br>
+    <span class="step">3 features passed, 0 failed, 0 skipped</span><br>
+    <span class="step">6 scenarios passed, 0 failed, 0 skipped</span><br>
+    <span class="step">51 steps passed, 0 failed, 0 skipped</span>
   </div>
 </div>
 
-<!-- SLIDE 15: What's Next -->
+<!-- SLIDE 15: Live Demo Setup -->
 <div class="slide" id="slide-15">
+  <h2>Live Demo Setup</h2>
+  <div class="two-col">
+    <div class="col">
+      <h3 style="color: #f472b6;">Target App (Kanboard)</h3>
+      <div class="code-block" style="font-size: 0.85rem; background: rgba(0,0,0,0.3);">
+        $ docker run -d -p 8080:80 \<br>
+        &nbsp;&nbsp;--name kanboard kanboard/kanboard
+      </div>
+      <div class="item-text" style="margin-top: 12px; font-size: 0.9rem; line-height: 1.8;">
+        <strong style="color: #f472b6;">URL:</strong> <code>http://localhost:8080</code><br>
+        <strong style="color: #f472b6;">Login:</strong> admin / admin
+      </div>
+    </div>
+    <div class="col">
+      <h3 style="color: #60a5fa;">TestFlow AI</h3>
+      <div class="code-block" style="font-size: 0.85rem; background: rgba(0,0,0,0.3);">
+        $ pip install -r requirements.txt<br>
+        $ python3 -c "from src.app import \<br>
+        &nbsp;&nbsp;create_app; create_app().run(port=5001)"
+      </div>
+      <div class="item-text" style="margin-top: 12px; font-size: 0.9rem; line-height: 1.8;">
+        <strong style="color: #60a5fa;">URL:</strong> <code>http://localhost:5001</code><br>
+        <strong style="color: #60a5fa;">Login:</strong> test@example.com / password123
+      </div>
+    </div>
+  </div>
+  <p style="color: #94a3b8; margin-top: 20px; font-size: 0.95rem;">
+    Demo flow: Create test &rarr; Run test &rarr; View results &rarr; Trigger failure &rarr; See AI diagnosis &rarr; Apply fix
+  </p>
+</div>
+
+<!-- SLIDE 16: What's Next -->
+<div class="slide" id="slide-16">
   <h2>What's Next</h2>
   <div class="content-left">
-    <div class="item" style="border-left-color: #fbbf24;">
-      <div class="item-icon">&#9654;</div>
-      <div class="item-text"><strong>Scenario 2:</strong> Test execution engine &mdash; run saved tests, capture screenshots, collect performance metrics</div>
+    <div class="item" style="border-left-color: #34d399;">
+      <div class="item-icon" style="color: #34d399;">&check;</div>
+      <div class="item-text"><strong>Scenario 1:</strong> Test creation in natural language &mdash; <span style="color: #34d399;">Implemented</span></div>
     </div>
-    <div class="item" style="border-left-color: #fbbf24;">
-      <div class="item-icon">&#9654;</div>
-      <div class="item-text"><strong>Scenario 3:</strong> Failure reporting &mdash; detailed failure logs, screenshot at failure point, AI-powered diagnosis</div>
+    <div class="item" style="border-left-color: #34d399;">
+      <div class="item-icon" style="color: #34d399;">&check;</div>
+      <div class="item-text"><strong>Scenario 2:</strong> Test execution engine with real browser, screenshots, metrics &mdash; <span style="color: #34d399;">Implemented</span></div>
+    </div>
+    <div class="item" style="border-left-color: #34d399;">
+      <div class="item-icon" style="color: #34d399;">&check;</div>
+      <div class="item-text"><strong>Scenario 3:</strong> AI failure diagnosis with 3 categories, actionable fix suggestions &mdash; <span style="color: #34d399;">Implemented</span></div>
     </div>
     <div class="item" style="border-left-color: #f472b6;">
       <div class="item-icon">&#9654;</div>
@@ -676,16 +730,23 @@
   </div>
 </div>
 
-<!-- SLIDE 16: Thank You -->
-<div class="slide" id="slide-16">
+<!-- SLIDE 17: Thank You -->
+<div class="slide" id="slide-17">
   <h1>Thank You</h1>
   <div class="subtitle">Questions?</div>
-  <div style="margin-top: 30px;">
+  <div style="margin-top: 20px; max-width: 700px;">
+    <p style="color: #94a3b8; font-size: 1rem; line-height: 1.7; margin-bottom: 20px;">
+      <strong style="color: #e2e8f0;">TestFlow AI</strong>: <code>http://localhost:5001</code><br>
+      <strong style="color: #e2e8f0;">Target App</strong>: <code>http://localhost:8080</code>
+    </p>
+  </div>
+  <div style="margin-top: 10px;">
     <span class="tag tag-blue">Flask + SQLite</span>
     <span class="tag tag-purple">Selenium + Chromium</span>
     <span class="tag tag-green">Behave BDD</span>
-    <span class="tag tag-pink">Docker</span>
+    <span class="tag tag-pink">Google Gemini AI</span>
   </div>
+  <p style="margin-top: 30px; color: #475569; font-size: 0.95rem;">CSC 510 - Software Engineering &bull; NC State University</p>
 </div>
 
 <!-- Navigation -->
@@ -693,11 +754,11 @@
   <button onclick="prev()">&larr; Prev</button>
   <button onclick="next()">Next &rarr;</button>
 </div>
-<div class="slide-counter" id="counter">1 / 16</div>
+<div class="slide-counter" id="counter">1 / 17</div>
 
 <script>
   let current = 1;
-  const total = 16;
+  const total = 17;
 
   function show(n) {
     document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
