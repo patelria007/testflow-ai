@@ -1,0 +1,21 @@
+[run]
+source = src
+branch = true
+omit =
+    tests/*
+    acceptance_tests/*
+    */migrations/*
+    */__pycache__/*
+    */site-packages/*
+
+[report]
+show_missing = true
+fail_under = 70
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if __name__ == .__main__.
+    raise NotImplementedError
+
+[html]
+directory = htmlcov

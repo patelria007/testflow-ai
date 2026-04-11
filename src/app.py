@@ -49,10 +49,12 @@ from src.scenario_generator import generate_scenarios
 
 
 def create_app() -> Flask:
-    """Application factory — creates and configures the Flask app.
+    """Create and configure the Flask application instance.
 
     Called by environment.py before_all() to start the server for acceptance tests,
     or directly to run the app standalone for manual testing.
+
+    @return: Configured Flask application with all routes registered
     """
     app = Flask(__name__)
     app.secret_key = "testflow-dev-secret-key"
@@ -67,10 +69,12 @@ def create_app() -> Flask:
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
-        """Login route — authenticates against the users table.
+        """Authenticate user against the users table.
 
-        GET  — render the login form (email + password fields).
-        POST — validate credentials via authenticate_user(), set session, redirect.
+        GET renders the login form (email + password fields).
+        POST validates credentials via authenticate_user(), sets session, and redirects.
+
+        @return: Rendered login.html template on GET or failed POST, or redirect to test_list on success
         """
         if request.method == "POST":
             email = request.form.get("email", "")
@@ -85,10 +89,12 @@ def create_app() -> Flask:
 
     @app.route("/register", methods=["GET", "POST"])
     def register():
-        """Registration route — creates a new user with hashed password.
+        """Register a new user with a hashed password.
 
-        GET  — render the registration form.
-        POST — validate inputs, create user via create_user(), redirect to login.
+        GET renders the registration form. POST validates inputs (email, password,
+        confirm_password), creates user via create_user(), and redirects to login.
+
+        @return: Rendered register.html template on GET or failed POST, or redirect to login on success
         """
         if request.method == "POST":
             email = request.form.get("email", "").strip()
@@ -115,14 +121,13 @@ def create_app() -> Flask:
 
     @app.route("/create-test", methods=["GET", "POST"])
     def create_test():
-        """Scenario 1: test creation route.
+        """Create a new test scenario (Scenario 1).
 
-        GET  — render the creation form (test_name, application_url,
-               steps_raw textarea, expected_outcome).
-        POST — insert test into SQLite via insert_test(), flash the
-               confirmation message, and redirect to /tests.
-               The flash message "Test scenario created successfully" is
-               verified by the step: 'I should see a confirmation message "..."'.
+        GET renders the creation form (test_name, application_url, steps_raw textarea,
+        expected_outcome). POST inserts the test into SQLite via insert_test(), flashes
+        the confirmation message, and redirects to /tests.
+
+        @return: Rendered create_test.html on GET, or redirect to test_list on successful POST
         """
         if not session.get("logged_in"):
             return redirect(url_for("login"))
@@ -145,11 +150,12 @@ def create_app() -> Flask:
 
     @app.route("/tests")
     def test_list():
-        """Scenario 1: test list route.
+        """Display all saved test scenarios in a list (Scenario 1).
 
         Queries all saved tests from SQLite and renders them in an HTML table.
-        Each row shows the test name (class="test-name") and status (class="test-status").
-        Selenium verifies the test name and "Not Run" status appear in this table.
+        Each row shows the test name and status. Redirects to login if not authenticated.
+
+        @return: Rendered test_list.html with all tests, or redirect to login
         """
         if not session.get("logged_in"):
             return redirect(url_for("login"))
@@ -162,11 +168,14 @@ def create_app() -> Flask:
 
     @app.route("/run-test/<int:test_id>", methods=["POST"])
     def run_test(test_id):
-        """Scenario 2: execute a test and redirect to results.
+        """Execute a test scenario and redirect to results (Scenario 2).
 
         Attempts real browser execution via test_runner.execute_test().
         If the real runner is unavailable (e.g., no Chrome driver in Docker),
         falls back to simulated execution so acceptance tests still pass.
+
+        @param test_id: Primary key of the test scenario to execute
+        @return: Redirect to test_results page, or redirect to test_list on error
         """
         if not session.get("logged_in"):
             return redirect(url_for("login"))
@@ -212,11 +221,13 @@ def create_app() -> Flask:
 
     @app.route("/test-results/<int:test_id>")
     def test_results(test_id):
-        """Scenario 2: display execution results for a test.
+        """Display execution results for a test scenario (Scenario 2).
 
-        Shows: status, execution time, per-step screenshots,
-        performance metrics, and (if failed) failure message,
-        AI diagnosis, and email notification status.
+        Shows status, execution time, per-step screenshots, performance metrics,
+        and (if failed) failure message, AI diagnosis, and email notification status.
+
+        @param test_id: Primary key of the test scenario whose results to display
+        @return: Rendered test_results.html with test and run data, or redirect on error
         """
         if not session.get("logged_in"):
             return redirect(url_for("login"))
@@ -231,7 +242,14 @@ def create_app() -> Flask:
 
     @app.route("/edit-test/<int:test_id>", methods=["GET", "POST"])
     def edit_test(test_id):
-        """Edit an existing test scenario."""
+        """Edit an existing test scenario.
+
+        GET renders the edit form pre-filled with current test data.
+        POST updates the test in the database and redirects to test list.
+
+        @param test_id: Primary key of the test scenario to edit
+        @return: Rendered edit_test.html on GET, or redirect to test_list on POST
+        """
         if not session.get("logged_in"):
             return redirect(url_for("login"))
 
@@ -256,7 +274,13 @@ def create_app() -> Flask:
 
     @app.route("/settings", methods=["GET", "POST"])
     def settings():
-        """Configuration page for email, saved apps, and preferences."""
+        """Display and update configuration for email, saved apps, and preferences.
+
+        GET renders the settings page. POST handles actions: save_settings,
+        add_app, delete_app, and update_app via the 'action' form field.
+
+        @return: Rendered settings.html on GET, or redirect to settings on POST
+        """
         if not session.get("logged_in"):
             return redirect(url_for("login"))
 
@@ -307,7 +331,14 @@ def create_app() -> Flask:
 
     @app.route("/apply-fix/<int:test_id>", methods=["POST"])
     def apply_fix(test_id):
-        """Apply AI-proposed test fix — updates the test steps with the suggestion."""
+        """Apply AI-proposed test fix by updating the test steps with the suggestion.
+
+        Reads proposed_steps from the form, updates the test's steps_raw, and
+        resets the test status to 'Not Run'.
+
+        @param test_id: Primary key of the test scenario to update
+        @return: Redirect to test_list after applying the fix or on error
+        """
         if not session.get("logged_in"):
             return redirect(url_for("login"))
 
@@ -329,7 +360,13 @@ def create_app() -> Flask:
 
     @app.route("/run-all-tests", methods=["POST"])
     def run_all_tests():
-        """Run all saved test scenarios sequentially."""
+        """Run all saved test scenarios sequentially.
+
+        Iterates through every test, executing each via real runner or simulation fallback.
+        Flashes a summary of passed/failed counts after completion.
+
+        @return: Redirect to test_list with flash message summarizing results
+        """
         if not session.get("logged_in"):
             return redirect(url_for("login"))
 
@@ -374,15 +411,14 @@ def create_app() -> Flask:
         return redirect(url_for("test_list"))
 
     def _simulate_execution(test):
-        """Smart simulated test execution fallback (Scenario 2).
+        """Simulate test execution as a fallback when the real runner is unavailable (Scenario 2).
 
-        Used when the real test runner is unavailable (e.g., Docker/CI without
-        Gemini API). Produces realistic results by:
-        - Parsing each natural language step and classifying its action type
-        - Generating real PNG screenshot files with step descriptions via Pillow
-        - Producing step-aware performance metrics (navigate > click > enter)
-        - Determining pass/fail from the test's expected_outcome field
-        - Generating contextual failure messages and diagnosis
+        Produces realistic results by parsing each natural language step, classifying
+        its action type, generating PNG screenshots via Pillow, producing step-aware
+        performance metrics, and determining pass/fail from expected_outcome.
+
+        @param test: Dict representing the test scenario row from the database
+        @return: Dict with keys: status, execution_time, failure_message, diagnosis, screenshots, performance, email_sent
         """
         import uuid
         run_id = uuid.uuid4().hex[:8]
@@ -520,10 +556,17 @@ def create_app() -> Flask:
         }
 
     def _generate_step_screenshot(run_id, step_num, step_text, action_type, app_url):
-        """Generate a real PNG screenshot image for a test step.
+        """Generate a real PNG screenshot image for a simulated test step.
 
         Creates a styled image with step info using Pillow, saved to static/screenshots/.
-        Returns the URL path to the generated image.
+        Falls back to a minimal 1x1 PNG if Pillow is not available.
+
+        @param run_id: Unique identifier for the current test run
+        @param step_num: Step number or label (e.g., 1, 2, or 'failure_point')
+        @param step_text: Description of the step being executed
+        @param action_type: Type of action (navigate, enter, click, wait, verify, error)
+        @param app_url: The target application URL shown in the screenshot
+        @return: URL path to the generated screenshot image (e.g., '/static/screenshots/...')
         """
         screenshot_dir = os.path.join(os.path.dirname(__file__), "static", "screenshots")
         os.makedirs(screenshot_dir, exist_ok=True)
@@ -605,6 +648,11 @@ def create_app() -> Flask:
             import struct
             import zlib
             def create_minimal_png(path):
+                """Create a minimal 1x1 pixel PNG file as a fallback screenshot.
+
+                @param path: File path where the PNG will be written
+                @return: None
+                """
                 sig = b'\x89PNG\r\n\x1a\n'
                 ihdr_data = struct.pack('>IIBBBBB', 1, 1, 8, 2, 0, 0, 0)
                 ihdr_crc = zlib.crc32(b'IHDR' + ihdr_data) & 0xffffffff
@@ -627,8 +675,10 @@ def create_app() -> Flask:
     def discover():
         """Auto-discover test scenarios for a target application.
 
-        GET  — show the URL input form.
-        POST — crawl the URL, send to Gemini, return generated scenarios for review.
+        GET shows the URL input form. POST crawls the target URL with specified depth,
+        sends the site map to Gemini, and returns generated scenarios for user review.
+
+        @return: Rendered discover.html with generated scenarios or None
         """
         if not session.get("logged_in"):
             return redirect(url_for("login"))
@@ -669,7 +719,12 @@ def create_app() -> Flask:
 
     @app.route("/save-discovered", methods=["POST"])
     def save_discovered():
-        """Save user-selected auto-generated test scenarios to the database."""
+        """Save user-selected auto-generated test scenarios to the database.
+
+        Reads selected scenario indices from the form and inserts each into the database.
+
+        @return: Redirect to test_list with a flash message indicating how many scenarios were saved
+        """
         if not session.get("logged_in"):
             return redirect(url_for("login"))
 
@@ -693,7 +748,10 @@ def create_app() -> Flask:
 
     @app.route("/")
     def index():
-        """Redirect root URL to login page."""
+        """Redirect root URL to the login page.
+
+        @return: Redirect response to the login route
+        """
         return redirect(url_for("login"))
 
     return app

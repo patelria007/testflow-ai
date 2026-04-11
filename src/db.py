@@ -49,6 +49,8 @@ def get_connection() -> sqlite3.Connection:
     """Return a connection to the SQLite database.
 
     Uses sqlite3.Row so rows can be accessed by column name.
+
+    @return: sqlite3.Connection configured with Row factory
     """
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -56,9 +58,14 @@ def get_connection() -> sqlite3.Connection:
 
 
 def create_user(email: str, password: str) -> int | None:
-    """Register a new user with a hashed password. Returns user id or None if email exists.
+    """Register a new user with a hashed password.
 
-    Uses werkzeug's generate_password_hash for secure bcrypt-style hashing.
+    Uses werkzeug's generate_password_hash for secure pbkdf2:sha256 hashing.
+
+    @param email: User email address (must be unique)
+    @param password: Plain-text password to hash and store
+    @return: New user id on success, or None if the email already exists
+    @throws sqlite3.IntegrityError: Caught internally when email is duplicate
     """
     conn = get_connection()
     try:
@@ -75,9 +82,13 @@ def create_user(email: str, password: str) -> int | None:
 
 
 def authenticate_user(email: str, password: str) -> dict | None:
-    """Validate email/password against the database. Returns user dict or None.
+    """Validate email and password against the database.
 
     Uses werkzeug's check_password_hash to compare against the stored hash.
+
+    @param email: User email address to look up
+    @param password: Plain-text password to verify against the stored hash
+    @return: Dict of user row data on success, or None if credentials are invalid
     """
     conn = get_connection()
     row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
@@ -88,9 +99,12 @@ def authenticate_user(email: str, password: str) -> dict | None:
 
 
 def init_db() -> None:
-    """Create the test_scenarios and test_runs tables if they do not exist.
+    """Create all database tables if they do not exist and seed the default test user.
 
-    Called once at Flask app startup (Scenarios 1 and 2).
+    Called once at Flask app startup. Creates users, test_scenarios, settings,
+    saved_apps, and test_runs tables.
+
+    @return: None
     """
     conn = get_connection()
     # Authentication: stores registered users with hashed passwords.
@@ -172,10 +186,11 @@ def init_db() -> None:
 
 
 def reset_db() -> None:
-    """Drop and recreate all tables.
+    """Drop and recreate all tables for a clean database state.
 
-    Called in environment.py before_scenario to ensure each test starts
-    with a clean database (Scenarios 1 and 2).
+    Called in environment.py before_scenario to ensure each test starts fresh.
+
+    @return: None
     """
     conn = get_connection()
     conn.execute("DROP TABLE IF EXISTS test_runs")
@@ -191,7 +206,12 @@ def reset_db() -> None:
 # --- Settings helpers ---
 
 def get_setting(key: str, default: str = "") -> str:
-    """Get a setting value by key."""
+    """Retrieve a setting value by its key from the settings table.
+
+    @param key: The setting key to look up
+    @param default: Value to return if the key does not exist
+    @return: The setting value, or the default if not found
+    """
     conn = get_connection()
     row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
     conn.close()
@@ -199,7 +219,12 @@ def get_setting(key: str, default: str = "") -> str:
 
 
 def set_setting(key: str, value: str) -> None:
-    """Set a setting value (insert or update)."""
+    """Set a setting value, inserting a new row or updating the existing one.
+
+    @param key: The setting key to set
+    @param value: The value to store for the key
+    @return: None
+    """
     conn = get_connection()
     conn.execute(
         "INSERT INTO settings (key, value) VALUES (?, ?) "
@@ -211,7 +236,10 @@ def set_setting(key: str, value: str) -> None:
 
 
 def get_all_settings() -> dict:
-    """Return all settings as a dict."""
+    """Return all settings as a key-value dict.
+
+    @return: Dict mapping setting keys to their values
+    """
     conn = get_connection()
     rows = conn.execute("SELECT key, value FROM settings").fetchall()
     conn.close()
@@ -222,7 +250,16 @@ def get_all_settings() -> dict:
 
 def insert_saved_app(name: str, url: str, auth_type: str,
                      username: str = "", password: str = "", api_token: str = "") -> int:
-    """Save a target application with its credentials."""
+    """Save a target application with its credentials to the database.
+
+    @param name: Display name for the application
+    @param url: Base URL of the target application
+    @param auth_type: Authentication type (e.g., 'none', 'basic', 'token')
+    @param username: Login username for the application
+    @param password: Login password for the application
+    @param api_token: API token for token-based authentication
+    @return: Row id of the newly inserted saved app
+    """
     conn = get_connection()
     cursor = conn.execute(
         """
@@ -238,7 +275,10 @@ def insert_saved_app(name: str, url: str, auth_type: str,
 
 
 def get_all_saved_apps() -> list[dict]:
-    """Return all saved applications."""
+    """Return all saved applications ordered by id.
+
+    @return: List of dicts, each representing a saved application row
+    """
     conn = get_connection()
     rows = conn.execute("SELECT * FROM saved_apps ORDER BY id").fetchall()
     conn.close()
@@ -246,7 +286,11 @@ def get_all_saved_apps() -> list[dict]:
 
 
 def get_saved_app(app_id: int) -> dict | None:
-    """Return a single saved app by id."""
+    """Return a single saved application by its id.
+
+    @param app_id: Primary key of the saved app to retrieve
+    @return: Dict of the saved app row, or None if not found
+    """
     conn = get_connection()
     row = conn.execute("SELECT * FROM saved_apps WHERE id = ?", (app_id,)).fetchone()
     conn.close()
@@ -255,7 +299,17 @@ def get_saved_app(app_id: int) -> dict | None:
 
 def update_saved_app(app_id: int, name: str, url: str, auth_type: str,
                      username: str = "", password: str = "", api_token: str = "") -> None:
-    """Update an existing saved app."""
+    """Update an existing saved application's details.
+
+    @param app_id: Primary key of the saved app to update
+    @param name: New display name for the application
+    @param url: New base URL of the target application
+    @param auth_type: New authentication type
+    @param username: New login username
+    @param password: New login password
+    @param api_token: New API token
+    @return: None
+    """
     conn = get_connection()
     conn.execute(
         """
@@ -270,7 +324,11 @@ def update_saved_app(app_id: int, name: str, url: str, auth_type: str,
 
 
 def delete_saved_app(app_id: int) -> None:
-    """Delete a saved app."""
+    """Delete a saved application from the database.
+
+    @param app_id: Primary key of the saved app to delete
+    @return: None
+    """
     conn = get_connection()
     conn.execute("DELETE FROM saved_apps WHERE id = ?", (app_id,))
     conn.commit()
@@ -278,10 +336,16 @@ def delete_saved_app(app_id: int) -> None:
 
 
 def insert_test(name: str, application_url: str, steps_raw: str, expected_outcome: str) -> int:
-    """Insert a new test scenario into the database. Returns the new row id.
+    """Insert a new test scenario into the database.
 
-    Scenario 1: called when the user clicks "Save Test" on the create test form.
-    The status column defaults to "Not Run".
+    Called when the user clicks Save Test on the create test form.
+    The status column defaults to 'Not Run'.
+
+    @param name: Test scenario name entered by the user
+    @param application_url: Target application URL to test against
+    @param steps_raw: Natural language test steps (free-form text)
+    @param expected_outcome: Expected result of the test execution
+    @return: Row id of the newly inserted test scenario
     """
     conn = get_connection()
     cursor = conn.execute(
@@ -300,8 +364,10 @@ def insert_test(name: str, application_url: str, steps_raw: str, expected_outcom
 def get_all_tests() -> list[dict]:
     """Return all saved test scenarios as a list of dicts.
 
-    Scenario 1: used by the /tests route to render the test list page.
-    Each dict contains: id, name, application_url, steps_raw, expected_outcome, status.
+    Used by the /tests route to render the test list page. Each dict contains:
+    id, name, application_url, steps_raw, expected_outcome, status.
+
+    @return: List of dicts, each representing a test scenario row
     """
     conn = get_connection()
     rows = conn.execute("SELECT * FROM test_scenarios ORDER BY id").fetchall()
@@ -310,9 +376,12 @@ def get_all_tests() -> list[dict]:
 
 
 def get_test_by_id(test_id: int) -> dict | None:
-    """Return a single test scenario by its id, or None if not found.
+    """Return a single test scenario by its id.
 
-    Scenario 2: used when executing a test or viewing its results.
+    Used when executing a test or viewing its results.
+
+    @param test_id: Primary key of the test scenario to retrieve
+    @return: Dict of the test scenario row, or None if not found
     """
     conn = get_connection()
     row = conn.execute("SELECT * FROM test_scenarios WHERE id = ?", (test_id,)).fetchone()
@@ -323,7 +392,11 @@ def get_test_by_id(test_id: int) -> dict | None:
 def update_test_status(test_id: int, status: str) -> None:
     """Update the status column of a test scenario.
 
-    Scenario 2: called after test execution to set status to "Passed" or "Failed".
+    Called after test execution to set status to 'Passed' or 'Failed'.
+
+    @param test_id: Primary key of the test scenario to update
+    @param status: New status value (e.g., 'Passed', 'Failed', 'Not Run')
+    @return: None
     """
     conn = get_connection()
     conn.execute("UPDATE test_scenarios SET status = ? WHERE id = ?", (status, test_id))
@@ -332,7 +405,15 @@ def update_test_status(test_id: int, status: str) -> None:
 
 
 def update_test(test_id: int, name: str, application_url: str, steps_raw: str, expected_outcome: str) -> None:
-    """Update an existing test scenario's details."""
+    """Update an existing test scenario's details.
+
+    @param test_id: Primary key of the test scenario to update
+    @param name: Updated test scenario name
+    @param application_url: Updated target application URL
+    @param steps_raw: Updated natural language test steps
+    @param expected_outcome: Updated expected result
+    @return: None
+    """
     conn = get_connection()
     conn.execute(
         """
@@ -352,18 +433,20 @@ def insert_test_run(test_id: int, status: str, execution_time: float,
                     screenshots: list | None = None,
                     performance: dict | None = None,
                     email_sent: bool = False) -> int:
-    """Insert a test execution run record. Returns the new row id.
+    """Insert a test execution run record into the database.
 
-    Scenario 2: called after simulated test execution to store results.
-    Fields:
-        test_id        — FK to the test scenario that was executed.
-        status         — "Passed" or "Failed" (shown on results page).
-        execution_time — seconds elapsed during execution.
-        failure_message — error description if test failed (Scenario 2B).
-        diagnosis      — AI-generated diagnosis text (Scenario 2B).
-        screenshots    — list of screenshot file paths (Scenario 2A/2B).
-        performance    — dict of page load times per step (Scenario 2A).
-        email_sent     — whether a failure notification email was sent (Scenario 2B).
+    Called after test execution to store results. Serializes diagnosis (dict or string),
+    screenshots (list), and performance (dict) as JSON for storage.
+
+    @param test_id: Foreign key to the test scenario that was executed
+    @param status: Execution result, either 'Passed' or 'Failed'
+    @param execution_time: Seconds elapsed during execution
+    @param failure_message: Error description if the test failed, or None
+    @param diagnosis: AI-generated diagnosis as dict or string, or None
+    @param screenshots: List of screenshot file paths, or None
+    @param performance: Dict of page load times per step, or None
+    @param email_sent: Whether a failure notification email was sent
+    @return: Row id of the newly inserted test run
     """
     # Serialize diagnosis: accepts both string (legacy) and dict (Scenario 3)
     if isinstance(diagnosis, dict):
@@ -395,7 +478,14 @@ def insert_test_run(test_id: int, status: str, execution_time: float,
 
 
 def _parse_diagnosis(raw):
-    """Parse diagnosis field: returns a dict if JSON, or wraps plain string."""
+    """Parse the diagnosis field from the database.
+
+    Returns a structured dict if the value is valid JSON, or wraps a plain-text
+    string into the standard diagnosis dict format.
+
+    @param raw: Raw diagnosis value from the database (JSON string, plain text, or None)
+    @return: Structured diagnosis dict with category, summary, explanation, suggestion, proposed_fix, or None
+    """
     if not raw:
         return None
     try:
@@ -415,9 +505,12 @@ def _parse_diagnosis(raw):
 
 
 def get_test_run(run_id: int) -> dict | None:
-    """Return a single test run by its id, or None if not found.
+    """Return a single test run by its id with parsed JSON fields.
 
-    Scenario 2: used by the /test-results route to display execution details.
+    Deserializes screenshots, performance, and diagnosis from their stored JSON format.
+
+    @param run_id: Primary key of the test run to retrieve
+    @return: Dict of the test run row with parsed fields, or None if not found
     """
     conn = get_connection()
     row = conn.execute("SELECT * FROM test_runs WHERE id = ?", (run_id,)).fetchone()
@@ -434,7 +527,10 @@ def get_test_run(run_id: int) -> dict | None:
 def get_latest_test_run(test_id: int) -> dict | None:
     """Return the most recent test run for a given test scenario.
 
-    Scenario 2: used to show results after clicking 'Run Test'.
+    Retrieves the latest run by id descending and deserializes JSON fields.
+
+    @param test_id: Foreign key of the test scenario whose latest run to retrieve
+    @return: Dict of the most recent test run with parsed fields, or None if no runs exist
     """
     conn = get_connection()
     row = conn.execute(

@@ -163,6 +163,39 @@ docker-compose run --rm testflow behave acceptance_tests/
 
 Note: Scenario 4 (SWAP Challenge) is not yet implemented and will error with `NotImplementedError`.
 
+## Running Unit and Integration Tests
+
+Unit and integration tests use **pytest** with coverage reporting via **pytest-cov**.
+
+### Run Unit Tests
+```bash
+pytest tests/unit/
+```
+
+### Run Integration Tests
+```bash
+pytest tests/integration/
+```
+
+### Run All Tests with Coverage
+```bash
+pytest tests/ --cov=src --cov-branch --cov-report=term-missing
+```
+
+### Docker Equivalents
+```bash
+# Unit tests
+docker-compose run --rm testflow pytest tests/unit/
+
+# Integration tests
+docker-compose run --rm testflow pytest tests/integration/
+
+# All tests with coverage
+docker-compose run --rm testflow pytest tests/ --cov=src --cov-branch --cov-report=term-missing
+```
+
+Coverage targets: 70% line coverage, 50% branch coverage. Configuration lives in `.coveragerc` and `pytest.ini`.
+
 ## Running the Application (Interactive Mode with Real Target App)
 
 Beyond acceptance tests, TestFlow AI can execute tests against real web applications using Selenium + Gemini LLM. This section explains how to set up and use the interactive mode.

@@ -22,7 +22,13 @@ _CONFIG_PATH = os.path.join(_PROJECT_ROOT, ".claude", ".config")
 
 
 def _load_api_key():
-    """Read the Gemini API key from .env, environment variable, or legacy .config."""
+    """Read the Gemini API key from .env, environment variable, or legacy .config.
+
+    Checks the project .env file first, then legacy .claude/.config, then
+    the GEMINI_API_KEY environment variable.
+
+    @return: API key string, or empty string if not found
+    """
     for path in (_ENV_PATH, _CONFIG_PATH):
         try:
             with open(path) as f:
@@ -42,13 +48,18 @@ def analyze_failure(error_message, step_text, page_title, page_errors,
                     available_elements, test_steps, expected_outcome, page_url):
     """Send failure context to Gemini and get a structured diagnosis.
 
-    Returns a dict with:
-        category: "test_design" | "application_bug" | "environment"
-        summary: One-line summary of the failure
-        explanation: Detailed explanation of what went wrong
-        suggestion: What to do next
-        proposed_fix: Either improved test steps (if test_design) or
-                      application fix description (if application_bug)
+    Constructs a prompt with full failure context and sends it to Gemini LLM.
+    Falls back to rule-based analysis if the API key is missing or the call fails.
+
+    @param error_message: The error that caused the test to fail
+    @param step_text: Description of the step that failed
+    @param page_title: Title of the page when the failure occurred
+    @param page_errors: List of error text strings visible on the page
+    @param available_elements: Dict of interactive elements discovered on the page
+    @param test_steps: Original natural language test steps
+    @param expected_outcome: Expected outcome of the test
+    @param page_url: URL of the page where the failure occurred
+    @return: Dict with keys: category, summary, explanation, suggestion, proposed_fix
     """
     api_key = _load_api_key()
     if not api_key:
@@ -126,7 +137,16 @@ Return ONLY valid JSON with this exact structure:
 
 
 def _fallback_analysis(error_message, step_text, available_elements):
-    """Rule-based fallback when Gemini is unavailable."""
+    """Perform rule-based failure analysis when Gemini is unavailable.
+
+    Classifies the error into environment, test_design, or application_bug
+    categories based on keyword matching in the error message.
+
+    @param error_message: The error that caused the test to fail
+    @param step_text: Description of the step that failed
+    @param available_elements: Dict of interactive elements discovered on the page
+    @return: Dict with keys: category, summary, explanation, suggestion, proposed_fix
+    """
     error_lower = error_message.lower()
     btn_texts = [b.get("text", "") for b in available_elements.get("buttons", []) if b.get("text")]
     input_names = [i.get("name") or i.get("id") for i in available_elements.get("inputs", []) if i.get("name") or i.get("id")]

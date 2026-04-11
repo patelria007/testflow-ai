@@ -35,7 +35,12 @@ os.makedirs(SCREENSHOT_DIR, exist_ok=True)
 
 
 def _create_driver():
-    """Create a headless Chrome WebDriver."""
+    """Create a headless Chrome WebDriver instance.
+
+    Configures Chrome with headless mode, sandbox disabled, and a fixed window size.
+
+    @return: Configured selenium.webdriver.Chrome instance
+    """
     options = Options()
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
@@ -45,7 +50,13 @@ def _create_driver():
 
 
 def _discover_elements(driver):
-    """Use BeautifulSoup to discover all interactive elements on the current page."""
+    """Use BeautifulSoup to discover all interactive elements on the current page.
+
+    Parses the page source and extracts inputs, buttons, links, and forms.
+
+    @param driver: Active Selenium WebDriver instance
+    @return: Dict with keys 'inputs', 'buttons', 'links', 'forms', each a list of element dicts
+    """
     soup = BeautifulSoup(driver.page_source, "html.parser")
     elements = {
         "inputs": [],
@@ -81,10 +92,14 @@ def _discover_elements(driver):
 
 
 def _find_input(driver, keyword):
-    """Find an input element matching a keyword (name, id, type, placeholder, label).
+    """Find an input element matching a keyword using multiple strategies.
 
-    Uses multiple strategies including exact match, partial match,
-    and word-level matching to handle LLM output like 'project name' → input[name='name'].
+    Tries CSS attribute match, type match, label text, textarea, select, and
+    last-resort visible text input. Handles LLM output like 'project name'.
+
+    @param driver: Active Selenium WebDriver instance
+    @param keyword: Keyword to match against input name, id, type, placeholder, or label
+    @return: Matching WebElement, or None if no input element is found
     """
     keyword_lower = keyword.lower().strip()
     # Also try individual words (e.g., "project name" → try "project", then "name")
@@ -165,8 +180,12 @@ def _find_input(driver, keyword):
 def _find_clickable(driver, keyword):
     """Find a clickable element (button, link, submit) matching a keyword.
 
-    Tries multiple matching strategies: exact text, partial text,
-    cleaned text (without 'button'/'link' suffixes), and word-level matching.
+    Tries multiple matching strategies: exact text, partial text, cleaned text
+    (without 'button'/'link' suffixes), word-level matching, and aria-label.
+
+    @param driver: Active Selenium WebDriver instance
+    @param keyword: Keyword to match against button text, link text, or element attributes
+    @return: Matching clickable WebElement, or None if not found
     """
     keyword_lower = keyword.lower().strip()
     # Strip common suffixes the LLM might add (e.g., "New project link" → "New project")
@@ -227,7 +246,13 @@ def _find_clickable(driver, keyword):
 
 
 def _take_screenshot(driver, run_id, step_num):
-    """Take a screenshot and return the path relative to static/."""
+    """Take a screenshot of the current browser state and save it to disk.
+
+    @param driver: Active Selenium WebDriver instance
+    @param run_id: Unique identifier for the current test run
+    @param step_num: Step number or label for the screenshot filename
+    @return: URL path to the saved screenshot (e.g., '/static/screenshots/...')
+    """
     filename = f"{run_id}_step_{step_num}.png"
     filepath = os.path.join(SCREENSHOT_DIR, filename)
     driver.save_screenshot(filepath)
@@ -235,18 +260,13 @@ def _take_screenshot(driver, run_id, step_num):
 
 
 def _parse_step(step_text):
-    """Parse a natural language step into an action dict.
+    """Parse a natural language step into a structured action dict.
 
-    Returns: {"action": str, "target": str, "value": str}
+    Supports patterns: navigate, enter, click, wait, verify, and select.
+    Falls back to 'verify' action for unrecognized patterns.
 
-    Supported patterns:
-      - Navigate/Go to <url>
-      - Enter/Type/Input <value> in/into <field>
-      - Enter/Type <field> (uses field name as both target and guess)
-      - Click/Press/Tap <element>
-      - Wait for <element/condition>
-      - Verify/Check/Assert <condition>
-      - Select <option> from <dropdown>
+    @param step_text: Raw natural language step string (e.g., 'Click the Submit button')
+    @return: Dict with keys 'action', 'target', and 'value'
     """
     # Strip step numbers like "1.", "Step 1:", etc.
     text = re.sub(r"^(\d+[\.\):]?\s*|step\s+\d+[\.\):]?\s*)", "", step_text, flags=re.I).strip()
@@ -293,7 +313,15 @@ def _parse_step(step_text):
 def _execute_step(driver, parsed, base_url):
     """Execute a single parsed step against the browser.
 
-    Returns a message describing what happened.
+    Dispatches to the appropriate Selenium action based on the parsed action type
+    (navigate, enter, click, wait, verify, select).
+
+    @param driver: Active Selenium WebDriver instance
+    @param parsed: Dict with keys 'action', 'target', 'value' from _parse_step
+    @param base_url: Base URL of the target application for resolving relative paths
+    @return: String message describing what happened (e.g., 'Clicked Submit')
+    @throws NoSuchElementException: When a target element cannot be found on the page
+    @throws AssertionError: When a verify action fails to find the expected content
     """
     action = parsed["action"]
     target = parsed["target"]
@@ -375,24 +403,17 @@ def _execute_step(driver, parsed, base_url):
 
 
 def execute_test(application_url, steps_raw, expected_outcome):
-    """Execute a test scenario against a real application.
+    """Execute a test scenario against a real application using headless Chrome.
 
-    Flow:
-      1. Open target URL in headless Chrome
-      2. Crawl page with BeautifulSoup → discover interactive elements
-      3. Send steps + elements to Gemini LLM → get structured actions
-      4. Execute each action with Selenium, taking screenshots + timing
-      5. After navigation/clicks, re-discover elements for subsequent steps
-      6. Verify expected outcome at the end
+    Opens the target URL, discovers page elements via BeautifulSoup, sends steps
+    to Gemini LLM for structured actions, executes each via Selenium with screenshots
+    and timing, re-discovers elements after navigation, and verifies expected outcome.
 
-    Args:
-        application_url: The target application URL (e.g., http://localhost:8080)
-        steps_raw: Natural language test steps (free-form text)
-        expected_outcome: What the test expects to see at the end
-
-    Returns:
-        dict with keys: status, execution_time, failure_message, diagnosis,
-                       screenshots, performance, email_sent, step_results
+    @param application_url: The target application URL (e.g., http://localhost:8080)
+    @param steps_raw: Natural language test steps (free-form text)
+    @param expected_outcome: What the test expects to see at the end
+    @return: Dict with keys: status, execution_time, failure_message, diagnosis, screenshots, performance, email_sent, step_results
+    @throws WebDriverException: When the browser fails to start or the target is unreachable
     """
     run_id = uuid.uuid4().hex[:8]
     driver = _create_driver()
@@ -533,8 +554,17 @@ def execute_test(application_url, steps_raw, expected_outcome):
 def _generate_diagnosis(driver, step_text, error_msg, steps_raw="", expected_outcome="", app_url=""):
     """Generate a structured diagnosis using the AI failure analyzer.
 
-    Returns a JSON-serializable dict with category, explanation, and proposed fix.
-    Falls back to a simple dict if analysis fails.
+    Extracts page context (title, error indicators, available elements) and sends
+    it to analyze_failure for AI-powered diagnosis. Falls back to a simple dict if
+    analysis fails.
+
+    @param driver: Active Selenium WebDriver instance with the failed page loaded
+    @param step_text: Description of the step that failed
+    @param error_msg: Error message from the failed step
+    @param steps_raw: Original natural language test steps for context
+    @param expected_outcome: Expected outcome of the test for context
+    @param app_url: Target application URL for context
+    @return: Dict with keys: category, summary, explanation, suggestion, proposed_fix
     """
     try:
         soup = BeautifulSoup(driver.page_source, "html.parser")

@@ -15,6 +15,12 @@ from selenium.common.exceptions import WebDriverException
 
 
 def _create_driver():
+    """Create a headless Chrome WebDriver instance for crawling.
+
+    Configures Chrome with headless mode, sandbox disabled, and a fixed window size.
+
+    @return: Configured selenium.webdriver.Chrome instance
+    """
     options = Options()
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
@@ -24,7 +30,14 @@ def _create_driver():
 
 
 def _extract_page_info(driver):
-    """Extract all interactive elements and metadata from the current page."""
+    """Extract all interactive elements and metadata from the current page.
+
+    Parses the page source with BeautifulSoup and collects inputs, buttons,
+    links, and forms with their attributes.
+
+    @param driver: Active Selenium WebDriver instance
+    @return: Dict with keys: url, title, inputs, buttons, links, forms
+    """
     soup = BeautifulSoup(driver.page_source, "html.parser")
 
     page = {
@@ -80,17 +93,13 @@ def _extract_page_info(driver):
 def crawl_site(url, max_pages=3, user_notes=""):
     """Crawl a target application and return a site map.
 
-    Args:
-        url: The starting URL to crawl.
-        max_pages: Maximum number of pages to visit (default 3).
-        user_notes: Optional notes from the user (e.g., credentials, hints).
+    Visits the starting URL, optionally auto-logs in, then follows prioritized
+    internal links up to max_pages depth.
 
-    Returns:
-        dict with:
-            - "pages": list of page info dicts
-            - "app_url": the starting URL
-            - "user_notes": the user's custom notes
-            - "error": error message if crawl failed, else None
+    @param url: The starting URL to crawl
+    @param max_pages: Maximum number of pages to visit (default 3)
+    @param user_notes: Optional notes from the user (e.g., credentials, hints)
+    @return: Dict with keys: pages (list of page info dicts), app_url, user_notes, error (str or None)
     """
     driver = _create_driver()
     visited = set()
@@ -172,9 +181,15 @@ def crawl_site(url, max_pages=3, user_notes=""):
 
 
 def _try_auto_login(driver, page_info, user_notes):
-    """Attempt to log in if the page has a login form.
+    """Attempt to log in if the current page has a login form.
 
-    Extracts credentials from user_notes or tries common defaults.
+    Detects password fields to identify login pages, extracts credentials
+    from user_notes via _parse_credentials, and submits the form.
+
+    @param driver: Active Selenium WebDriver instance
+    @param page_info: Dict of page metadata from _extract_page_info
+    @param user_notes: User-provided notes that may contain credentials
+    @return: None
     """
     # Check if this looks like a login page
     has_password = any(
@@ -234,13 +249,13 @@ def _try_auto_login(driver, page_info, user_notes):
 
 
 def _parse_credentials(user_notes):
-    """Extract username/password from user notes text.
+    """Extract username and password from user notes text.
 
-    Looks for patterns like:
-      - username: admin, password: admin
-      - login with admin/admin
-      - user=admin pass=admin
-      - credentials: admin admin
+    Looks for patterns like 'username: admin, password: admin',
+    'login with admin/admin', or 'user=admin pass=admin'.
+
+    @param user_notes: Free-form text that may contain credential information
+    @return: Tuple of (username, password), either or both may be None if not found
     """
     import re
     if not user_notes:

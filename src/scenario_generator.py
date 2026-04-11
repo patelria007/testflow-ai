@@ -15,7 +15,13 @@ _CONFIG_PATH = os.path.join(_PROJECT_ROOT, ".claude", ".config")
 
 
 def _load_api_key():
-    """Read the Gemini API key from .env, environment variable, or legacy .config."""
+    """Read the Gemini API key from .env, environment variable, or legacy .config.
+
+    Checks the project .env file first, then legacy .claude/.config, then
+    the GEMINI_API_KEY environment variable.
+
+    @return: API key string, or empty string if not found
+    """
     for path in (_ENV_PATH, _CONFIG_PATH):
         try:
             with open(path) as f:
@@ -32,16 +38,18 @@ def _load_api_key():
 
 
 def generate_scenarios(site_map, max_scenarios=3, complexity="medium", focus_areas=""):
-    """Generate test scenarios from a crawled site map.
+    """Generate test scenarios from a crawled site map using Gemini LLM.
 
-    Args:
-        site_map: dict from crawl_site() with "pages" and "app_url"
-        max_scenarios: Maximum number of scenarios to generate
-        complexity: "simple" (2-3 steps), "medium" (3-5 steps), "complex" (5-8 steps)
-        focus_areas: Comma-separated list of areas to focus on
+    Constructs a prompt with the site description, complexity setting, and focus
+    areas, sends it to Gemini, and parses the JSON response into scenario dicts.
 
-    Returns:
-        list of scenario dicts: [{"name", "steps", "expected_outcome", "category"}, ...]
+    @param site_map: Dict from crawl_site() with keys 'pages', 'app_url', 'user_notes'
+    @param max_scenarios: Maximum number of scenarios to generate
+    @param complexity: Step count level: 'simple' (2-3), 'medium' (3-5), or 'complex' (5-8)
+    @param focus_areas: Comma-separated list of areas to focus on (e.g., 'authentication,navigation')
+    @return: List of scenario dicts, each with keys: name, steps, expected_outcome, category
+    @throws ValueError: When the Gemini API key is not found
+    @throws RuntimeError: When no available Gemini model can process the request
     """
     api_key = _load_api_key()
     if not api_key:
@@ -130,7 +138,14 @@ Return ONLY a valid JSON array, no other text. Example format:
 
 
 def _build_site_description(site_map):
-    """Build a concise text description of the site map for the LLM prompt."""
+    """Build a concise text description of the site map for the LLM prompt.
+
+    Formats each crawled page's forms, buttons, links, and standalone inputs
+    into a human-readable summary.
+
+    @param site_map: Dict from crawl_site() containing a 'pages' list
+    @return: Formatted string describing all discovered pages and their elements
+    """
     parts = []
     for i, page in enumerate(site_map["pages"]):
         parts.append(f"\n--- Page {i+1}: {page['title']} ({page['url']}) ---")

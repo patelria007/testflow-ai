@@ -17,7 +17,13 @@ _CONFIG_PATH = os.path.join(_PROJECT_ROOT, ".claude", ".config")
 
 
 def _load_api_key():
-    """Read the Gemini API key from .env, environment variable, or legacy .config."""
+    """Read the Gemini API key from .env, environment variable, or legacy .config.
+
+    Checks the project .env file first, then legacy .claude/.config, then
+    the GEMINI_API_KEY environment variable.
+
+    @return: API key string, or empty string if not found
+    """
     # 1. Check .env file at project root
     for path in (_ENV_PATH, _CONFIG_PATH):
         try:
@@ -36,16 +42,17 @@ def _load_api_key():
 
 
 def parse_steps_with_llm(steps_raw, page_elements, page_url):
-    """Send natural language steps + page elements to Gemini, get structured actions.
+    """Send natural language steps and page elements to Gemini, get structured actions.
 
-    Args:
-        steps_raw: The user's free-form natural language test steps.
-        page_elements: Dict of discovered elements from BeautifulSoup
-                       (inputs, buttons, links, forms).
-        page_url: The target application URL.
+    Constructs a prompt with discovered page elements and the user's test steps,
+    sends it to Gemini LLM, and parses the JSON response into action dicts.
 
-    Returns:
-        List of action dicts: [{"action": str, "target": str, "value": str}, ...]
+    @param steps_raw: The user's free-form natural language test steps
+    @param page_elements: Dict of discovered elements from BeautifulSoup (inputs, buttons, links, forms)
+    @param page_url: The target application URL
+    @return: List of action dicts, each with keys 'action', 'target', 'value'
+    @throws ValueError: When the Gemini API key is not found
+    @throws RuntimeError: When no available Gemini model can process the request
     """
     api_key = _load_api_key()
     if not api_key:
