@@ -13,6 +13,12 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - TESTFLOW_SMTP_HOST=${TESTFLOW_SMTP_HOST:-}
+      - TESTFLOW_SMTP_PORT=${TESTFLOW_SMTP_PORT:-}
+      - TESTFLOW_SMTP_USERNAME=${TESTFLOW_SMTP_USERNAME:-}
+      - TESTFLOW_SMTP_PASSWORD=${TESTFLOW_SMTP_PASSWORD:-}
+      - TESTFLOW_SMTP_FROM=${TESTFLOW_SMTP_FROM:-}
+      - TESTFLOW_SMTP_USE_TLS=${TESTFLOW_SMTP_USE_TLS:-1}
     ports:
       - "5001:5001"
     command: python -c "from src.app import create_app; app = create_app(); app.run(host='0.0.0.0', port=5001)"

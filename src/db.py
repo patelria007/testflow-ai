@@ -31,6 +31,11 @@ Schema — test_runs table (Scenario 2):
     screenshots      TEXT     JSON array of screenshot paths.     (Scenario 2: step "screenshots for each step")
     performance      TEXT     JSON object with page load times.   (Scenario 2: step "performance metrics")
     email_sent       INTEGER  1 if failure email was sent.        (Scenario 2: step "receive an email notification")
+    notification_triggered INTEGER 1 if smart notification fired.
+    notification_reason TEXT Why the smart notification fired.
+    notification_recipient TEXT Recipient chosen for the alert.
+    notification_delivery TEXT Delivery mode (smtp_sent/simulated/suppressed).
+    notification_error TEXT Delivery failure details when SMTP send fails.
     created_at       TEXT     ISO timestamp of execution.
 """
 
@@ -176,13 +181,31 @@ def init_db() -> None:
             screenshots TEXT,
             performance TEXT,
             email_sent INTEGER DEFAULT 0,
+            notification_triggered INTEGER DEFAULT 0,
+            notification_reason TEXT,
+            notification_recipient TEXT,
+            notification_delivery TEXT DEFAULT 'not_applicable',
+            notification_error TEXT,
             created_at TEXT NOT NULL,
             FOREIGN KEY (test_id) REFERENCES test_scenarios(id)
         )
         """
     )
+    _ensure_column(conn, "test_runs", "notification_triggered", "INTEGER DEFAULT 0")
+    _ensure_column(conn, "test_runs", "notification_reason", "TEXT")
+    _ensure_column(conn, "test_runs", "notification_recipient", "TEXT")
+    _ensure_column(conn, "test_runs", "notification_delivery", "TEXT DEFAULT 'not_applicable'")
+    _ensure_column(conn, "test_runs", "notification_error", "TEXT")
     conn.commit()
     conn.close()
+
+
+def _ensure_column(conn: sqlite3.Connection, table: str, column: str, definition: str) -> None:
+    """Add a column if it does not already exist."""
+    rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    existing = {row["name"] for row in rows}
+    if column not in existing:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
 
 def reset_db() -> None:
@@ -432,7 +455,12 @@ def insert_test_run(test_id: int, status: str, execution_time: float,
                     diagnosis: str | None = None,
                     screenshots: list | None = None,
                     performance: dict | None = None,
-                    email_sent: bool = False) -> int:
+                    email_sent: bool = False,
+                    notification_triggered: bool = False,
+                    notification_reason: str = "",
+                    notification_recipient: str = "",
+                    notification_delivery: str = "not_applicable",
+                    notification_error: str = "") -> int:
     """Insert a test execution run record into the database.
 
     Called after test execution to store results. Serializes diagnosis (dict or string),
@@ -446,6 +474,11 @@ def insert_test_run(test_id: int, status: str, execution_time: float,
     @param screenshots: List of screenshot file paths, or None
     @param performance: Dict of page load times per step, or None
     @param email_sent: Whether a failure notification email was sent
+    @param notification_triggered: Whether the smart notification rules fired
+    @param notification_reason: Human-readable reason for triggering or suppressing
+    @param notification_recipient: Recipient selected for the notification
+    @param notification_delivery: Delivery mode used for the notification
+    @param notification_error: Delivery error details for failed SMTP attempts
     @return: Row id of the newly inserted test run
     """
     # Serialize diagnosis: accepts both string (legacy) and dict (Scenario 3)
@@ -459,8 +492,10 @@ def insert_test_run(test_id: int, status: str, execution_time: float,
         """
         INSERT INTO test_runs
             (test_id, status, execution_time, failure_message, diagnosis,
-             screenshots, performance, email_sent, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             screenshots, performance, email_sent, notification_triggered,
+             notification_reason, notification_recipient, notification_delivery,
+             notification_error, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             test_id, status, execution_time,
@@ -468,6 +503,11 @@ def insert_test_run(test_id: int, status: str, execution_time: float,
             json.dumps(screenshots or []),
             json.dumps(performance or {}),
             1 if email_sent else 0,
+            1 if notification_triggered else 0,
+            notification_reason,
+            notification_recipient,
+            notification_delivery,
+            notification_error,
             datetime.now(timezone.utc).isoformat(),
         ),
     )

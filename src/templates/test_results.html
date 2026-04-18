@@ -131,10 +131,30 @@
     {% endif %}
 
     <!-- Scenario 2B: email notification (step: "receive an email notification") -->
-    {% if run.email_sent %}
+    {% if run.notification_triggered %}
     <div class="email-notification">
-      <span class="result-label">Notification</span>
-      <p class="email-sent-text">Email notification sent to team about test failure.</p>
+      <span class="result-label">Smart Notification</span>
+      <p class="email-sent-text">Smart notification triggered for {{ run.notification_recipient or 'team' }}.</p>
+      {% if run.notification_reason %}
+      <p class="notification-meta"><strong>Why:</strong> {{ run.notification_reason }}</p>
+      {% endif %}
+      <p class="notification-meta"><strong>Delivery:</strong>
+        {% if run.notification_delivery == 'smtp_sent' %}
+        Email sent via SMTP
+        {% elif run.notification_delivery == 'simulated' %}
+        Logged as a simulated alert because SMTP delivery failed
+        {% else %}
+        {{ run.notification_delivery }}
+        {% endif %}
+      </p>
+      {% if run.notification_error %}
+      <p class="notification-meta"><strong>SMTP error:</strong> {{ run.notification_error }}</p>
+      {% endif %}
+    </div>
+    {% elif run.status == 'Failed' %}
+    <div class="email-notification notification-muted">
+      <span class="result-label">Smart Notification</span>
+      <p class="notification-meta">No notification was sent because the failure did not match the current smart-notification rules.</p>
     </div>
     {% endif %}
   </div>
@@ -370,6 +390,15 @@
     color: var(--accent-yellow);
     font-weight: 500;
     margin-top: 4px;
+    margin-bottom: 6px;
+  }
+  .notification-meta {
+    color: var(--text-muted);
+    margin: 0;
+  }
+  .notification-muted {
+    background: rgba(148, 163, 184, 0.08);
+    border-color: rgba(148, 163, 184, 0.18);
   }
   .screenshot-grid {
     display: grid;

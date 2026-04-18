@@ -228,12 +228,63 @@ python3 -c "from src.app import create_app; app = create_app(); app.run(port=500
 
 Create a `.env` file in the project root:
 ```bash
-echo "GEMINI_API_KEY=YOUR_KEY" > .env
+cat > .env <<'EOF'
+GEMINI_API_KEY=YOUR_KEY
+EOF
 ```
 
 You can get a free Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey).
 
 Without a key, the app still works — failure diagnosis uses rule-based fallback instead of LLM.
+
+### Step 2b: Configure SMTP for Smart Notifications (Optional)
+
+Smart notifications can send real email alerts through SMTP. If SMTP is not configured, the app will still record and display the notification in the UI as a simulated delivery.
+
+Add the SMTP settings to the same `.env` file:
+
+```bash
+cat > .env <<'EOF'
+GEMINI_API_KEY=YOUR_KEY
+TESTFLOW_SMTP_HOST=smtp.gmail.com
+TESTFLOW_SMTP_PORT=587
+TESTFLOW_SMTP_USERNAME=your-email@gmail.com
+TESTFLOW_SMTP_PASSWORD=your-google-app-password
+TESTFLOW_SMTP_FROM=your-email@gmail.com
+TESTFLOW_SMTP_USE_TLS=1
+EOF
+```
+
+Notes:
+- The Docker `webapp` service reads these variables automatically.
+- For Gmail, `TESTFLOW_SMTP_USERNAME` and `TESTFLOW_SMTP_FROM` are usually the same address.
+- `TESTFLOW_SMTP_PASSWORD` must be a **Google App Password**, not your normal Gmail password.
+
+#### Creating a Google App Password
+
+Gmail SMTP will usually reject your normal account password. Use a Google App Password instead:
+
+1. Sign in to the Google account that will send the notifications.
+2. Go to **Google Account → Security**.
+3. Turn on **2-Step Verification** if it is not already enabled.
+4. Open **App passwords**.
+5. Create a new app password for Mail, or create a custom-named password for TestFlow AI.
+6. Copy the generated 16-character password into `TESTFLOW_SMTP_PASSWORD`.
+
+Example:
+
+```env
+TESTFLOW_SMTP_USERNAME=your-email@gmail.com
+TESTFLOW_SMTP_PASSWORD=abcdefghijklmnop
+TESTFLOW_SMTP_FROM=your-email@gmail.com
+```
+
+After updating `.env`, restart the app:
+
+```bash
+docker compose down
+docker compose up --build --force-recreate webapp
+```
 
 ### Step 3: Deploy a Target Application (Kanboard)
 
@@ -294,13 +345,22 @@ When a test fails, the results page now shows an **AI-powered diagnosis** with:
 ### Step 4c: Settings & Saved Applications
 
 1. Click **"Settings"** in the navigation bar
-2. **Report Email** — enter your email to receive test failure notifications
+2. **Report Email** — enter the destination email address that should receive smart notification alerts
 3. **Saved Applications** — add target apps with their credentials:
    - Click **"+ Add Application"**
    - Enter name, URL, and auth type (None / Username & Password / API Token)
    - Credentials are stored securely and injected during test execution
    - No need to include auth details in test steps
 4. When creating a test, select a saved app from the dropdown to auto-fill the URL
+
+To verify SMTP is working:
+
+1. Save a **Report Email** in Settings
+2. Create a test that intentionally fails, for example with an expected outcome containing `payment timeout`
+3. Run the test
+4. On the results page, look for the **Smart Notification** section
+5. If SMTP succeeds, the delivery line will say **"Email sent via SMTP"**
+6. If SMTP fails, the results page will show the SMTP error message to help with debugging
 
 ### Step 5: Auto-Discover Test Scenarios (AI Discover)
 

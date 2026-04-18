@@ -46,6 +46,7 @@ from src.db import (init_db, insert_test, get_all_tests, get_test_by_id,
 from src.test_runner import execute_test
 from src.site_crawler import crawl_site
 from src.scenario_generator import generate_scenarios
+from src.notifications import process_smart_notification
 
 
 def create_app() -> Flask:
@@ -199,6 +200,8 @@ def create_app() -> Flask:
             except Exception:
                 result = _simulate_execution(test)
 
+        result = _apply_notification_policy(test, result)
+
         # Store the run results (Scenario 2: all result fields)
         run_id = insert_test_run(
             test_id=test_id,
@@ -209,6 +212,11 @@ def create_app() -> Flask:
             screenshots=result["screenshots"],
             performance=result["performance"],
             email_sent=result["email_sent"],
+            notification_triggered=result["notification_triggered"],
+            notification_reason=result["notification_reason"],
+            notification_recipient=result["notification_recipient"],
+            notification_delivery=result["notification_delivery"],
+            notification_error=result["notification_error"],
         )
 
         # Update the test scenario status (Scenario 2: status changes from "Not Run")
@@ -390,6 +398,8 @@ def create_app() -> Flask:
                 except Exception:
                     result = _simulate_execution(test)
 
+            result = _apply_notification_policy(test, result)
+
             insert_test_run(
                 test_id=test["id"],
                 status=result["status"],
@@ -399,6 +409,11 @@ def create_app() -> Flask:
                 screenshots=result["screenshots"],
                 performance=result["performance"],
                 email_sent=result["email_sent"],
+                notification_triggered=result["notification_triggered"],
+                notification_reason=result["notification_reason"],
+                notification_recipient=result["notification_recipient"],
+                notification_delivery=result["notification_delivery"],
+                notification_error=result["notification_error"],
             )
             update_test_status(test["id"], result["status"])
 
@@ -409,6 +424,14 @@ def create_app() -> Flask:
 
         flash(f"All tests executed: {passed} passed, {failed} failed", "success" if failed == 0 else "error")
         return redirect(url_for("test_list"))
+
+    def _apply_notification_policy(test, result):
+        """Evaluate smart notifications and merge the outcome into the run result."""
+        recipient = get_setting("report_email", "") or session.get("user_email", "")
+        notification = process_smart_notification(test, result, recipient=recipient)
+        merged = dict(result)
+        merged.update(notification)
+        return merged
 
     def _simulate_execution(test):
         """Simulate test execution as a fallback when the real runner is unavailable (Scenario 2).
@@ -487,7 +510,6 @@ def create_app() -> Flask:
                                 "for connection timeout errors. Consider increasing the API timeout "
                                 "threshold or adding a retry mechanism in the payment processing code.",
             }
-            email_sent = True
             fail_path = _generate_step_screenshot(
                 run_id, "failure_point", f"FAILURE: {failure_message}",
                 "error", test["application_url"]
@@ -510,7 +532,6 @@ def create_app() -> Flask:
                                 "2. Click the Submit button\n"
                                 "3. Verify success message is visible",
             }
-            email_sent = True
             fail_path = _generate_step_screenshot(
                 run_id, "failure_point", f"FAILURE: {failure_message}",
                 "error", test["application_url"]
@@ -532,7 +553,6 @@ def create_app() -> Flask:
                 "proposed_fix": "Check that the application server is running, the port is correct, "
                                 "and there are no firewall or network issues blocking the connection.",
             }
-            email_sent = True
             fail_path = _generate_step_screenshot(
                 run_id, "failure_point", f"FAILURE: {failure_message}",
                 "error", test["application_url"]
@@ -543,8 +563,6 @@ def create_app() -> Flask:
             status = "Passed"
             failure_message = None
             diagnosis = None
-            email_sent = False
-
         return {
             "status": status,
             "execution_time": execution_time,
@@ -552,7 +570,7 @@ def create_app() -> Flask:
             "diagnosis": diagnosis,
             "screenshots": screenshots,
             "performance": performance,
-            "email_sent": email_sent,
+            "email_sent": False,
         }
 
     def _generate_step_screenshot(run_id, step_num, step_text, action_type, app_url):
